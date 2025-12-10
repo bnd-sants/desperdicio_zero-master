@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Configuração de verificação de links digitais (Digital Asset Links) -->
+    <string name="asset_statements" translatable="false">
+        [{
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "com.example.desperdicio_zero",
+                "sha256_cert_fingerprints": [
+                    "96:52:DB:1E:65:0E:85:7D:49:3A:C3:2B:6F:46:DC:B3:A2:77:7F:57:5E:0E:0D:7F:40:3C:BC:48:4E:8F:20:60"
+                ]
+            }
+        }]
+    </string>
+    
+    <!-- URL base para autenticação -->
+    <string name="auth_domain">buuzrnplodxzzmcgstxw.supabase.co</string>
+    <string name="auth_scheme">com.example.desperdicio_zero</string>
+</resources>
