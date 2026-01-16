@@ -92,8 +92,9 @@ class Product {
     if (brand != null) map['brand'] = brand;
     if (store != null) map['store'] = store;
     if (price != null) map['price'] = price;
-    if (purchaseDate != null)
+    if (purchaseDate != null) {
       map['purchase_date'] = purchaseDate!.toIso8601String();
+    }
     if (calories != null) map['calories'] = calories;
     if (carbs != null) map['carbs'] = carbs;
     if (protein != null) map['protein'] = protein;

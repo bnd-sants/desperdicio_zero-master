@@ -4,8 +4,11 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:desperdicio_zero/services/notification_service.dart';
+import 'package:desperdicio_zero/services/deep_link_service.dart';
+import 'package:desperdicio_zero/services/product_service.dart';
 
 class PushNotificationService {
   PushNotificationService._();
@@ -18,7 +21,7 @@ class PushNotificationService {
   String? _cachedToken;
 
   Future<void> initialize(SupabaseClient supabaseClient) async {
-    if (!Platform.isAndroid && !Platform.isIOS) {
+    if (!kIsWeb && !Platform.isAndroid && !Platform.isIOS) {
       debugPrint('PushNotificationService: Plataforma não suportada para FCM.');
       return;
     }
@@ -50,10 +53,13 @@ class PushNotificationService {
       FirebaseMessaging.onMessageOpenedApp.listen(_handleOpenedApp);
 
       _tokenRefreshSubscription?.cancel();
-      _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(
-        (token) => _upsertToken(supabaseClient, token),
-        onError: (error) => debugPrint('PushNotificationService: erro ao atualizar token: $error'),
-      );
+      _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh
+          .listen(
+            (token) => _upsertToken(supabaseClient, token),
+            onError: (error) => debugPrint(
+              'PushNotificationService: erro ao atualizar token: $error',
+            ),
+          );
 
       await syncTokenForCurrentUser(supabaseClient);
       _initialized = true;
@@ -65,8 +71,17 @@ class PushNotificationService {
 
   Future<void> syncTokenForCurrentUser(SupabaseClient supabaseClient) async {
     try {
-      final token = await _messaging.getToken();
+      String? token;
+      if (kIsWeb) {
+        final vapidKey = dotenv.env['FIREBASE_VAPID_KEY'];
+        token = await _messaging.getToken(vapidKey: vapidKey);
+      } else {
+        token = await _messaging.getToken();
+      }
       if (token == null) return;
+      debugPrint(
+        'PushNotificationService: token obtido (${kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android')})',
+      );
       await _upsertToken(supabaseClient, token);
     } catch (e) {
       debugPrint('PushNotificationService: erro ao sincronizar token: $e');
@@ -80,10 +95,10 @@ class PushNotificationService {
       final userId = supabaseClient.auth.currentUser?.id;
       if (userId == null) return;
 
-      await supabaseClient
-          .from('notification_tokens')
-          .delete()
-          .match({'user_id': userId, 'token': _cachedToken!});
+      await supabaseClient.from('notification_tokens').delete().match({
+        'user_id': userId,
+        'token': _cachedToken!,
+      });
     } catch (e) {
       debugPrint('PushNotificationService: erro ao remover token: $e');
     }
@@ -105,8 +120,9 @@ class PushNotificationService {
       await supabaseClient.from('notification_tokens').upsert({
         'user_id': userId,
         'token': token,
-        'platform': Platform.isIOS ? 'ios' : 'android',
+        'platform': kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android'),
       }, onConflict: 'token');
+      debugPrint('PushNotificationService: token sincronizado com Supabase');
     } catch (e) {
       debugPrint('PushNotificationService: erro ao salvar token: $e');
     }
@@ -119,12 +135,35 @@ class PushNotificationService {
     await NotificationService.instance.showPushNotification(
       title: notification.title ?? 'Nova notificação',
       body: notification.body ?? '',
-      payload: message.data.isEmpty ? null : Map<String, dynamic>.from(message.data),
+      payload: message.data.isEmpty
+          ? null
+          : Map<String, dynamic>.from(message.data),
     );
   }
 
   void _handleOpenedApp(RemoteMessage message) {
-    debugPrint('PushNotificationService: notificação aberta com payload: ${message.data}');
-    // TODO: Navegar para telas específicas conforme o payload.
+    debugPrint(
+      'PushNotificationService: notificação aberta com payload: ${message.data}',
+    );
+    final nav = navigatorKey.currentState;
+    if (nav != null) {
+      final route = (message.data['route'] as String?) ?? '';
+      final productId = message.data['productId'] as String?;
+      if (route.startsWith('/product/') || productId != null) {
+        final id = productId ?? route.split('/product/').last;
+        ProductService()
+            .getProduct(id)
+            .then((product) {
+              nav.pushNamed('/product-detail', arguments: product);
+            })
+            .catchError((_) {
+              nav.pushNamed('/notifications', arguments: message.data);
+            });
+      } else if (route.isNotEmpty) {
+        nav.pushNamed(route, arguments: message.data);
+      } else {
+        nav.pushNamed('/notifications', arguments: message.data);
+      }
+    }
   }
 }

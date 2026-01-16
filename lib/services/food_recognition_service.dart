@@ -224,75 +224,7 @@ class FoodRecognitionService {
     }
   }
 
-  // Método de tradução manual como fallback
-  static String _translateToPortugueseManual(String englishName) {
-    final translations = {
-      'pasta': 'massa',
-      'meat': 'carne',
-      'basil': 'manjericão',
-      'tomato': 'tomate',
-      'beef': 'carne bovina',
-      'penne': 'penne',
-      'cheese': 'queijo',
-      'tagliatelle': 'tagliatelle',
-      'spaghetti bolognese': 'espaguete à bolonhesa',
-      'sausage': 'salsicha',
-      'macaroni': 'macarrão',
-      'chicken': 'frango',
-      'garlic': 'alho',
-      'parmesan': 'parmesão',
-      'spaghetti carbonara': 'espaguete à carbonara',
-      'goulash': 'goulash',
-      'ground beef': 'carne moída',
-      'garlic bread': 'pão de alho',
-      'pork': 'porco',
-      'french fries': 'batata frita',
-      'apple': 'maçã',
-      'banana': 'banana',
-      'orange': 'laranja',
-      'grape': 'uva',
-      'strawberry': 'morango',
-      'pineapple': 'abacaxi',
-      'watermelon': 'melancia',
-      'lemon': 'limão',
-      'lime': 'lima',
-      'peach': 'pêssego',
-      'pear': 'pêra',
-      'cherry': 'cereja',
-      'mango': 'manga',
-      'kiwi': 'kiwi',
-      'potato': 'batata',
-      'carrot': 'cenoura',
-      'onion': 'cebola',
-      'pepper': 'pimentão',
-      'broccoli': 'brócolis',
-      'spinach': 'espinafre',
-      'lettuce': 'alface',
-      'cabbage': 'repolho',
-      'fish': 'peixe',
-      'salmon': 'salmão',
-      'tuna': 'atum',
-      'egg': 'ovo',
-      'milk': 'leite',
-      'yogurt': 'iogurte',
-      'bread': 'pão',
-      'rice': 'arroz',
-      'cereal': 'cereal',
-      'oat': 'aveia',
-      'wheat': 'trigo',
-      'corn': 'milho',
-      'bean': 'feijão',
-      'lentil': 'lentilha',
-      'chickpea': 'grão de bico',
-      'nut': 'nozes',
-      'almond': 'amêndoa',
-      'walnut': 'noz',
-      'peanut': 'amendoim',
-      'cashew': 'castanha de caju'
-    };
-
-    return translations[englishName.toLowerCase()] ?? englishName;
-  }
+  // Função de tradução manual removida por não estar sendo utilizada
 
 
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/core/providers/shopping_list_provider.dart';
 
 class ShoppingListScreen extends ConsumerWidget {
+  const ShoppingListScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shoppingList = ref.watch(shoppingListProvider);

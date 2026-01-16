@@ -10,6 +10,7 @@ import 'package:desperdicio_zero/utils/logger_util.dart' as logger;
 import '../calendar_screen.dart';
 import '../profile_screen.dart';
 import '../statistics_screen.dart';
+import 'package:desperdicio_zero/core/providers/notifications_provider.dart';
 import 'package:desperdicio_zero/widgets/fridge_heatmap.dart';
 import 'package:desperdicio_zero/widgets/gamification_widgets.dart';
 import 'package:desperdicio_zero/core/providers/gamification_provider.dart';
@@ -79,54 +80,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _listenGamificationEvents() {
-    ref.listen<GamificationState>(
-      gamificationProvider,
-      (previous, next) {
-        if (!mounted) return;
-        if (next.recentlyCompletedMissions.isEmpty || next.lastXpGained == 0) {
-          return;
-        }
+    ref.listen<GamificationState>(gamificationProvider, (previous, next) {
+      if (!mounted) return;
+      if (next.recentlyCompletedMissions.isEmpty || next.lastXpGained == 0) {
+        return;
+      }
 
-        final missionNames = next.recentlyCompletedMissions
-            .map((id) {
-              final mission = next.missions.firstWhere(
-                (mission) => mission.id == id,
-                orElse: () => const GamificationMission(
-                  id: 'mission',
-                  title: 'Missão',
-                  description: '',
-                  progress: 0,
-                  goal: 0,
-                  xpReward: 0,
-                ),
-              );
-              return mission.title;
-            })
-            .join(', ');
-
-        final message = next.recentlyCompletedMissions.length > 1
-            ? 'Missões $missionNames concluídas! +${next.lastXpGained} XP'
-            : 'Missão $missionNames concluída! +${next.lastXpGained} XP';
-
-        final messenger = ScaffoldMessenger.of(context);
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(message),
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: 'Ver missões',
-                onPressed: () {
-                  Navigator.of(context).pushNamed('/missions');
-                },
+      final missionNames = next.recentlyCompletedMissions
+          .map((id) {
+            final mission = next.missions.firstWhere(
+              (mission) => mission.id == id,
+              orElse: () => const GamificationMission(
+                id: 'mission',
+                title: 'Missão',
+                description: '',
+                progress: 0,
+                goal: 0,
+                xpReward: 0,
               ),
-            ),
-          );
+            );
+            return mission.title;
+          })
+          .join(', ');
 
-        ref.read(gamificationProvider.notifier).clearRecentMissionEvents();
-      },
-    );
+      final message = next.recentlyCompletedMissions.length > 1
+          ? 'Missões $missionNames concluídas! +${next.lastXpGained} XP'
+          : 'Missão $missionNames concluída! +${next.lastXpGained} XP';
+
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Ver missões',
+              onPressed: () {
+                Navigator.of(context).pushNamed('/missions');
+              },
+            ),
+          ),
+        );
+
+      ref.read(gamificationProvider.notifier).clearRecentMissionEvents();
+    });
   }
 
   void _onSearchChanged() {
@@ -188,8 +186,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.inventory_2_outlined,
-              size: 64, color: colorScheme.primary.withValues(alpha: 0.6)),
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 64,
+            color: colorScheme.primary.withValues(alpha: 0.6),
+          ),
           const SizedBox(height: StyleTokens.spacingL),
           Text(
             'Nenhum produto ainda',
@@ -218,15 +219,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildProductGrid(List<Product> products,
-      {bool embedded = false, ColorScheme? colorScheme}) {
+  Widget _buildProductGrid(
+    List<Product> products, {
+    bool embedded = false,
+    ColorScheme? colorScheme,
+  }) {
     final filteredProducts = _searchQuery.isEmpty
         ? products
         : products
-            .where((product) => product.name
-                .toLowerCase()
-                .contains(_searchQuery.toLowerCase()))
-            .toList();
+              .where(
+                (product) => product.name.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ),
+              )
+              .toList();
 
     if (filteredProducts.isEmpty) {
       return _buildEmptyState(colorScheme ?? Theme.of(context).colorScheme);
@@ -247,11 +253,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final product = filteredProducts[index];
         return GestureDetector(
           onTap: () {
-            Navigator.pushNamed(
-              context,
-              '/product-detail',
-              arguments: product,
-            );
+            Navigator.pushNamed(context, '/product-detail', arguments: product);
           },
           onLongPress: () {
             _showProductOptions(product);
@@ -298,7 +300,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Quantidade: ${product.quantity} ${product.unit}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
                       if (product.expirationDate != null) ...[
                         const SizedBox(height: 2),
@@ -322,10 +327,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _navigateToAddProduct() async {
-    final result = await Navigator.pushNamed(
-      context,
-      '/add-product',
-    );
+    final result = await Navigator.pushNamed(context, '/add-product');
 
     if (result == true) {
       // Refresh the products list if needed
@@ -343,27 +345,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             leading: const Icon(Icons.restaurant),
             title: const Text('Marcar como consumido'),
             onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
               try {
-                await ref.read(productsProvider.notifier).markAsConsumed(product.id);
-                ref.read(gamificationProvider.notifier).onProductConsumed(isCritical: product.isCritical);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                await ref
+                    .read(productsProvider.notifier)
+                    .markAsConsumed(product.id);
+                ref
+                    .read(gamificationProvider.notifier)
+                    .onProductConsumed(isCritical: product.isCritical);
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
                     SnackBar(
-                      content: Text('Produto consumido! ${product.isCritical ? '+120 XP' : '+15 XP'}'),
+                      content: Text(
+                        'Produto consumido! ${product.isCritical ? '+120 XP' : '+15 XP'}',
+                      ),
                       backgroundColor: Colors.green,
                     ),
                   );
-                }
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
                     const SnackBar(
                       content: Text('Erro ao consumir produto'),
                       backgroundColor: Colors.red,
                     ),
                   );
-                }
               }
             },
           ),
@@ -372,11 +381,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: const Text('Editar'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(
-                context,
-                '/add-product',
-                arguments: product,
-              );
+              Navigator.pushNamed(context, '/add-product', arguments: product);
             },
           ),
           ListTile(
@@ -440,15 +445,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const SizedBox(height: StyleTokens.spacingM),
         _buildSectionHeader('Seus produtos'),
         const SizedBox(height: StyleTokens.spacingS),
-        _buildProductGrid(
-          products,
-          embedded: true,
-          colorScheme: colorScheme,
-        ),
+        _buildProductGrid(products, embedded: true, colorScheme: colorScheme),
       ],
     );
   }
-
 
   Widget _buildSearchBar() {
     final theme = Theme.of(context);
@@ -456,9 +456,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(StyleTokens.radiusPill),
-        boxShadow: [
-          if (!isDark) StyleTokens.lightShadow,
-        ],
+        boxShadow: [if (!isDark) StyleTokens.lightShadow],
       ),
       child: TextField(
         controller: _searchController,
@@ -466,17 +464,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         decoration: InputDecoration(
           hintText: 'Buscar produtos...',
           hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black45),
-          prefixIcon:
-              Icon(Icons.search, color: isDark ? Colors.white70 : Colors.black54),
+          prefixIcon: Icon(
+            Icons.search,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(StyleTokens.radiusPill),
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor:
-              isDark ? theme.cardColor.withValues(alpha: 0.7) : Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          fillColor: isDark
+              ? theme.cardColor.withValues(alpha: 0.7)
+              : Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -594,28 +597,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Row(
           children: actions
               .take(2)
-              .map((action) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: StyleTokens.spacingS,
-                      ),
-                      child: _QuickActionCard(data: action),
+              .map(
+                (action) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: StyleTokens.spacingS,
                     ),
-                  ))
+                    child: _QuickActionCard(data: action),
+                  ),
+                ),
+              )
               .toList(),
         ),
         const SizedBox(height: StyleTokens.spacingS),
         Row(
           children: actions
               .skip(2)
-              .map((action) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: StyleTokens.spacingS,
-                      ),
-                      child: _QuickActionCard(data: action),
+              .map(
+                (action) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: StyleTokens.spacingS,
                     ),
-                  ))
+                    child: _QuickActionCard(data: action),
+                  ),
+                ),
+              )
               .toList(),
         ),
       ],
@@ -630,14 +637,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final userName = _resolveUserName(authState);
 
     return Scaffold(
-      appBar: _selectedIndex == 0 
+      appBar: _selectedIndex == 0
           ? AppBar(
               automaticallyImplyLeading: false,
               title: Text(
                 'Olá, $userName!',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               elevation: 0,
               actions: [
@@ -660,12 +665,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             minWidth: 12,
                             minHeight: 12,
                           ),
+                          child: Builder(
+                            builder: (context) {
+                              final count = ref
+                                  .watch(notificationsProvider)
+                                  .where((n) => !n.isRead)
+                                  .length;
+                              if (count == 0) return const SizedBox.shrink();
+                              return Center(
+                                child: Text(
+                                  count > 9 ? '9+' : '$count',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                   onPressed: () {
                     logger.logInfo('Botão de notificações pressionado');
+                    Navigator.pushNamed(context, '/notifications');
                   },
                 ),
               ],
@@ -824,12 +849,7 @@ class _HeroStat extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color.withValues(alpha: 0.8),
-            ),
-          ),
+          Text(label, style: TextStyle(color: color.withValues(alpha: 0.8))),
         ],
       ),
     );

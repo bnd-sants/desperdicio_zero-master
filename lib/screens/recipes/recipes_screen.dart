@@ -13,7 +13,7 @@ import 'recipe_detail_screen.dart';
 typedef Recipe = model.Recipe;
 
 class RecipesScreen extends ConsumerStatefulWidget {
-  const RecipesScreen({Key? key}) : super(key: key);
+  const RecipesScreen({super.key});
 
   @override
   ConsumerState<RecipesScreen> createState() => _RecipesScreenState();
@@ -25,8 +25,20 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   final TextEditingController _tagController = TextEditingController();
   String _searchQuery = '';
   final List<String> _selectedTags = [];
-  final List<String> _availableTags = ['Rápido', 'Fácil', 'Saudável', 'Vegetariano', 'Sobremesa'];
-  final List<String> _quickTags = ['Rápido', 'Fácil', 'Saudável', 'Vegetariano', 'Sobremesa'];
+  final List<String> _availableTags = [
+    'Rápido',
+    'Fácil',
+    'Saudável',
+    'Vegetariano',
+    'Sobremesa',
+  ];
+  final List<String> _quickTags = [
+    'Rápido',
+    'Fácil',
+    'Saudável',
+    'Vegetariano',
+    'Sobremesa',
+  ];
 
   @override
   void initState() {
@@ -80,12 +92,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (_searchQuery.isEmpty && _selectedTags.isEmpty) return true;
 
     // Check if recipe matches search text
-    final matchesSearch = _searchQuery.isEmpty ||
+    final matchesSearch =
+        _searchQuery.isEmpty ||
         recipe.title.toLowerCase().contains(_searchQuery) ||
         (recipe.description?.toLowerCase().contains(_searchQuery) ?? false) ||
         (recipe.instructions?.toLowerCase().contains(_searchQuery) ?? false) ||
-        (recipe.products.any((product) => 
-            product.name.toLowerCase().contains(_searchQuery)));
+        (recipe.products.any(
+          (product) => product.name.toLowerCase().contains(_searchQuery),
+        ));
 
     // If search doesn't match, return false
     if (!matchesSearch) return false;
@@ -96,52 +110,100 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     // Check if recipe has all selected tags
     return _selectedTags.every((tag) {
       final tagLower = tag.toLowerCase();
-      
+
       // Check if tag matches any of the recipe's tags
-      if (recipe.tags?.any((t) => t.toLowerCase().contains(tagLower)) ?? false) {
+      if (recipe.tags?.any((t) => t.toLowerCase().contains(tagLower)) ??
+          false) {
         return true;
       }
-      
+
       // Special handling for quick tags
       switch (tag) {
         case 'Rápido':
           // Consider a recipe 'Rápido' if prepTime is 30 minutes or less
           return (recipe.prepTime ?? 0) <= 30;
-          
+
         case 'Fácil':
           // Consider a recipe 'Fácil' if it has few steps or ingredients
-          final stepCount = recipe.instructions?.split('\n').where((s) => s.trim().isNotEmpty).length ?? 0;
+          final stepCount =
+              recipe.instructions
+                  ?.split('\n')
+                  .where((s) => s.trim().isNotEmpty)
+                  .length ??
+              0;
           return stepCount <= 3 || (recipe.products.length <= 5);
-          
+
         case 'Saudável':
           // Check for health-related keywords in tags or description
-          final healthKeywords = ['saudável', 'saudavel', 'light', 'fitness', 'fit', 'saúde', 'saude'];
-          return healthKeywords.any((keyword) => 
-              recipe.description?.toLowerCase().contains(keyword) ?? false) ||
-              (recipe.tags?.any((t) => healthKeywords.contains(t.toLowerCase())) ?? false);
-              
+          final healthKeywords = [
+            'saudável',
+            'saudavel',
+            'light',
+            'fitness',
+            'fit',
+            'saúde',
+            'saude',
+          ];
+          return healthKeywords.any(
+                (keyword) =>
+                    recipe.description?.toLowerCase().contains(keyword) ??
+                    false,
+              ) ||
+              (recipe.tags?.any(
+                    (t) => healthKeywords.contains(t.toLowerCase()),
+                  ) ??
+                  false);
+
         case 'Vegetariano':
           // Check for vegetarian-related keywords
-          final vegKeywords = ['vegetariano', 'vegetariana', 'sem carne', 'vegetable', 'veggie'];
-          return vegKeywords.any((keyword) => 
-              recipe.title.toLowerCase().contains(keyword) ||
-              recipe.description?.toLowerCase().contains(keyword) == true ||
-              (recipe.tags?.any((t) => vegKeywords.contains(t.toLowerCase())) ?? false));
-              
+          final vegKeywords = [
+            'vegetariano',
+            'vegetariana',
+            'sem carne',
+            'vegetable',
+            'veggie',
+          ];
+          return vegKeywords.any(
+            (keyword) =>
+                recipe.title.toLowerCase().contains(keyword) ||
+                recipe.description?.toLowerCase().contains(keyword) == true ||
+                (recipe.tags?.any(
+                      (t) => vegKeywords.contains(t.toLowerCase()),
+                    ) ??
+                    false),
+          );
+
         case 'Sobremesa':
           // Check for dessert-related keywords
-          final dessertKeywords = ['sobremesa', 'doce', 'sobremesas', 'doces', 'sobremesa', 'sobremesas', 'sobremesa', 'sobremesas'];
-          return dessertKeywords.any((keyword) => 
-              recipe.title.toLowerCase().contains(keyword) ||
-              recipe.description?.toLowerCase().contains(keyword) == true ||
-              (recipe.tags?.any((t) => dessertKeywords.contains(t.toLowerCase())) ?? false));
-              
+          final dessertKeywords = [
+            'sobremesa',
+            'doce',
+            'sobremesas',
+            'doces',
+            'sobremesa',
+            'sobremesas',
+            'sobremesa',
+            'sobremesas',
+          ];
+          return dessertKeywords.any(
+            (keyword) =>
+                recipe.title.toLowerCase().contains(keyword) ||
+                recipe.description?.toLowerCase().contains(keyword) == true ||
+                (recipe.tags?.any(
+                      (t) => dessertKeywords.contains(t.toLowerCase()),
+                    ) ??
+                    false),
+          );
+
         default:
           // For custom tags, check if they match any part of the recipe
           return recipe.title.toLowerCase().contains(tagLower) ||
               (recipe.description?.toLowerCase().contains(tagLower) ?? false) ||
-              (recipe.instructions?.toLowerCase().contains(tagLower) ?? false) ||
-              (recipe.products.any((p) => p.name.toLowerCase().contains(tagLower)));
+              (recipe.instructions?.toLowerCase().contains(tagLower) ??
+                  false) ||
+              (recipe.products.any(
+                (p) => p.name.toLowerCase().contains(tagLower),
+              ));
       }
     });
   }
@@ -152,7 +214,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       setState(() {
         _selectedTags.add(tag);
         _tagController.clear();
-        
+
         // Add to quick tags if not already there
         if (!_quickTags.any((t) => t.toLowerCase() == tag.toLowerCase())) {
           _quickTags.add(tag);
@@ -170,11 +232,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       height: 200,
       width: double.infinity,
       color: Colors.grey[200],
-      child: const Icon(
-        Icons.fastfood,
-        size: 64,
-        color: Colors.grey,
-      ),
+      child: const Icon(Icons.fastfood, size: 64, color: Colors.grey),
     );
   }
 
@@ -239,7 +297,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                               vertical: StyleTokens.spacingS,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(StyleTokens.radiusM),
+                              borderRadius: BorderRadius.circular(
+                                StyleTokens.radiusM,
+                              ),
                             ),
                           ),
                         ),
@@ -253,7 +313,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                           children: _quickTags.map((tag) {
                             final isSelected = _selectedTags.contains(tag);
                             return Padding(
-                              padding: const EdgeInsets.only(right: StyleTokens.spacingS),
+                              padding: const EdgeInsets.only(
+                                right: StyleTokens.spacingS,
+                              ),
                               child: FilterChip(
                                 label: Text(tag),
                                 selected: isSelected,
@@ -268,14 +330,16 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                                     }
                                   });
                                 },
-                                selectedColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                selectedColor: theme.colorScheme.primary
+                                    .withValues(alpha: 0.15),
                                 checkmarkColor: theme.colorScheme.primary,
                                 labelStyle: TextStyle(
                                   color: isSelected
                                       ? theme.colorScheme.primary
                                       : theme.textTheme.bodyMedium?.color,
-                                  fontWeight:
-                                      isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             );
@@ -294,8 +358,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                                 label: Text(tag),
                                 deleteIcon: const Icon(Icons.close, size: 16),
                                 onDeleted: () => _removeTag(tag),
-                                backgroundColor:
-                                    theme.colorScheme.primary.withValues(alpha: 0.08),
+                                backgroundColor: theme.colorScheme.primary
+                                    .withValues(alpha: 0.08),
                                 labelStyle: TextStyle(
                                   color: theme.colorScheme.primary,
                                   fontWeight: FontWeight.w600,
@@ -345,8 +409,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   }
 
                   final recipes = snapshot.data ?? [];
-                  final filtered =
-                      recipes.where((r) => _matchesSearch(r)).toList();
+                  final filtered = recipes
+                      .where((r) => _matchesSearch(r))
+                      .toList();
 
                   if (filtered.isEmpty) {
                     return Center(
@@ -428,7 +493,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholderImage(),
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildPlaceholderImage(),
                     )
                   : _buildPlaceholderImage(),
             ),
@@ -458,14 +524,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                       if (recipe.prepTime != null)
                         Chip(
                           label: Text('${recipe.prepTime} min'),
-                          backgroundColor:
-                              theme.colorScheme.primary.withValues(alpha: 0.1),
+                          backgroundColor: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
                         ),
                       if (recipe.servings != null)
                         Chip(
                           label: Text('${recipe.servings} porções'),
-                          backgroundColor:
-                              theme.colorScheme.secondary.withValues(alpha: 0.1),
+                          backgroundColor: theme.colorScheme.secondary
+                              .withValues(alpha: 0.1),
                         ),
                     ],
                   ),

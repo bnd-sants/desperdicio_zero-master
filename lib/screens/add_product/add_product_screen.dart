@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import 'package:desperdicio_zero/utils/logger_util.dart' show logInfo, logDebug, logError;
+import 'package:desperdicio_zero/utils/logger_util.dart'
+    show logInfo, logDebug, logError;
 import 'package:desperdicio_zero/services/notification_service.dart';
 import 'package:desperdicio_zero/widgets/app_snackbar.dart';
 import 'package:desperdicio_zero/widgets/app_button.dart';
@@ -14,18 +15,13 @@ import 'package:desperdicio_zero/core/providers/index.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:desperdicio_zero/services/ocr_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/core/providers/gamification_provider.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final Function(Product)? onProductAdded;
   final Product? productToEdit;
 
-  const AddProductScreen({
-    super.key,
-    this.onProductAdded,
-    this.productToEdit,
-  });
+  const AddProductScreen({super.key, this.onProductAdded, this.productToEdit});
 
   @override
   ConsumerState<AddProductScreen> createState() => _AddProductScreenState();
@@ -166,7 +162,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Remove o diálogo de carregamento em caso de erro
+        Navigator.pop(
+          context,
+        ); // Remove o diálogo de carregamento em caso de erro
         AppSnackbar.showError(
           context: context,
           message: 'Erro ao processar a imagem: $e',
@@ -186,13 +184,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       final product = Product(
         id: widget.productToEdit?.id ?? _uuid.v4(),
         name: _nameController.text.trim(),
-        type: _typeController.text.trim().isNotEmpty ? _typeController.text.trim() : null,
-        brand: _brandController.text.trim().isNotEmpty ? _brandController.text.trim() : null,
+        type: _typeController.text.trim().isNotEmpty
+            ? _typeController.text.trim()
+            : null,
+        brand: _brandController.text.trim().isNotEmpty
+            ? _brandController.text.trim()
+            : null,
         quantity: double.tryParse(_quantityController.text) ?? 1.0,
         unit: _selectedUnit,
         purchaseDate: _purchaseDate,
         expirationDate: _expirationDate,
-        store: _storeController.text.trim().isNotEmpty ? _storeController.text.trim() : null,
+        store: _storeController.text.trim().isNotEmpty
+            ? _storeController.text.trim()
+            : null,
         price: _priceController.text.trim().isNotEmpty
             ? double.tryParse(_priceController.text) ?? 0.0
             : null,
@@ -258,7 +262,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           if (mounted) {
             AppSnackbar.showWarning(
               context: context,
-              message: 'Produto salvo, mas houve um erro ao agendar notificações.',
+              message:
+                  'Produto salvo, mas houve um erro ao agendar notificações.',
             );
           }
         }
@@ -323,7 +328,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(productsProvider.notifier).removeProduct(widget.productToEdit!.id);
+      await ref
+          .read(productsProvider.notifier)
+          .removeProduct(widget.productToEdit!.id);
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -357,10 +364,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         return;
       }
       final file = File(xfile.path);
-      final products = await OcrService.instance.recognizeProductsFromImage(file);
+      final products = await OcrService.instance.recognizeProductsFromImage(
+        file,
+      );
       setState(() => _isLoading = false);
       if (products.isEmpty) {
-        if (mounted) AppSnackbar.showWarning(context: context, message: 'Nenhum produto reconhecido.');
+        if (mounted) {
+          AppSnackbar.showWarning(
+            context: context,
+            message: 'Nenhum produto reconhecido.',
+          );
+        }
         return;
       }
       // Exibir pré-visualização e pedir confirmação (stub simples)
@@ -374,13 +388,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ...products.map((e) => ListTile(title: Text(e.name), subtitle: Text('Qtd: ${e.quantity ?? '-'} ${e.unit ?? ''} Validade: ${e.expirationDate?.toString().substring(0, 10) ?? '-'}'))),
+                ...products.map(
+                  (e) => ListTile(
+                    title: Text(e.name),
+                    subtitle: Text(
+                      'Qtd: ${e.quantity ?? '-'} ${e.unit ?? ''} Validade: ${e.expirationDate?.toString().substring(0, 10) ?? '-'}',
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancelar')),
-            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text('Cadastrar Todos')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Cadastrar Todos'),
+            ),
           ],
         ),
       );
@@ -398,15 +425,33 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
               isConsumed: false,
-              brand: null, store: null, price: null, purchaseDate: null, calories: null, carbs: null, protein: null, fat: null, type: null,
+              brand: null,
+              store: null,
+              price: null,
+              purchaseDate: null,
+              calories: null,
+              carbs: null,
+              protein: null,
+              fat: null,
+              type: null,
             ),
           );
         }
-        if (mounted) AppSnackbar.showSuccess(context: context, message: 'Produtos cadastrados!');
+        if (mounted) {
+          AppSnackbar.showSuccess(
+            context: context,
+            message: 'Produtos cadastrados!',
+          );
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) AppSnackbar.showError(context: context, message: 'Erro ao processar OCR: $e');
+      if (mounted) {
+        AppSnackbar.showError(
+          context: context,
+          message: 'Erro ao processar OCR: $e',
+        );
+      }
     }
   }
 
@@ -417,7 +462,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.productToEdit != null ? 'Editar Produto' : 'Adicionar Produto'),
+        title: Text(
+          widget.productToEdit != null ? 'Editar Produto' : 'Adicionar Produto',
+        ),
         actions: [
           if (widget.productToEdit != null)
             IconButton(
@@ -466,7 +513,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                     if (value == null || value.trim().isEmpty) {
                                       return 'Informe a quantidade';
                                     }
-                                    if (double.tryParse(value.replaceAll(',', '.')) == null) {
+                                    if (double.tryParse(
+                                          value.replaceAll(',', '.'),
+                                        ) ==
+                                        null) {
                                       return 'Número inválido';
                                     }
                                     return null;
@@ -477,7 +527,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               Expanded(
                                 flex: 2,
                                 child: DropdownButtonFormField<String>(
-                                  value: _selectedUnit,
+                                  initialValue: _selectedUnit,
                                   decoration: InputDecoration(
                                     labelText: 'Unidade',
                                     contentPadding: const EdgeInsets.symmetric(
@@ -485,15 +535,32 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                       vertical: StyleTokens.spacingS,
                                     ),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(StyleTokens.radiusM),
+                                      borderRadius: BorderRadius.circular(
+                                        StyleTokens.radiusM,
+                                      ),
                                     ),
                                   ),
                                   items: const [
-                                    DropdownMenuItem(value: 'un', child: Text('Un')),
-                                    DropdownMenuItem(value: 'g', child: Text('g')),
-                                    DropdownMenuItem(value: 'kg', child: Text('kg')),
-                                    DropdownMenuItem(value: 'ml', child: Text('ml')),
-                                    DropdownMenuItem(value: 'l', child: Text('L')),
+                                    DropdownMenuItem(
+                                      value: 'un',
+                                      child: Text('Un'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'g',
+                                      child: Text('g'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'kg',
+                                      child: Text('kg'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'ml',
+                                      child: Text('ml'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'l',
+                                      child: Text('L'),
+                                    ),
                                   ],
                                   onChanged: (value) {
                                     if (value != null) {
@@ -514,7 +581,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           AppTextField(
                             controller: _brandController,
                             label: 'Marca (opcional)',
-                            prefixIcon: const Icon(Icons.branding_watermark_outlined),
+                            prefixIcon: const Icon(
+                              Icons.branding_watermark_outlined,
+                            ),
                           ),
                           const SizedBox(height: StyleTokens.spacingL),
                           AppTextField(
@@ -526,13 +595,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           AppTextField(
                             controller: _storeController,
                             label: 'Loja (opcional)',
-                            prefixIcon: const Icon(Icons.store_mall_directory_outlined),
+                            prefixIcon: const Icon(
+                              Icons.store_mall_directory_outlined,
+                            ),
                           ),
                           const SizedBox(height: StyleTokens.spacingL),
                           AppTextField(
                             controller: _priceController,
                             label: 'Preço (opcional)',
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             prefixIcon: const Icon(Icons.attach_money),
                           ),
                         ],
@@ -545,7 +618,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.calendar_today, color: colorScheme.primary),
+                              Icon(
+                                Icons.calendar_today,
+                                color: colorScheme.primary,
+                              ),
                               const SizedBox(width: StyleTokens.spacingS),
                               Text(
                                 'Datas importantes',
@@ -567,7 +643,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               '${_purchaseDate.day.toString().padLeft(2, '0')}/${_purchaseDate.month.toString().padLeft(2, '0')}/${_purchaseDate.year}',
                             ),
                             trailing: IconButton(
-                              icon: Icon(Icons.edit_calendar, color: colorScheme.primary),
+                              icon: Icon(
+                                Icons.edit_calendar,
+                                color: colorScheme.primary,
+                              ),
                               onPressed: () async {
                                 final DateTime? picked = await showDatePicker(
                                   context: context,
@@ -601,7 +680,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               children: [
                                 if (_expirationDate != null)
                                   IconButton(
-                                    icon: Icon(Icons.clear, color: colorScheme.error),
+                                    icon: Icon(
+                                      Icons.clear,
+                                      color: colorScheme.error,
+                                    ),
                                     onPressed: () {
                                       setState(() {
                                         _expirationDate = null;
@@ -609,15 +691,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                     },
                                   ),
                                 IconButton(
-                                  icon: Icon(Icons.edit_calendar, color: colorScheme.primary),
+                                  icon: Icon(
+                                    Icons.edit_calendar,
+                                    color: colorScheme.primary,
+                                  ),
                                   onPressed: () async {
-                                    final DateTime? picked = await showDatePicker(
-                                      context: context,
-                                      initialDate: _expirationDate ??
-                                          DateTime.now().add(const Duration(days: 7)),
-                                      firstDate: DateTime.now(),
-                                      lastDate: DateTime(2100),
-                                    );
+                                    final DateTime? picked =
+                                        await showDatePicker(
+                                          context: context,
+                                          initialDate:
+                                              _expirationDate ??
+                                              DateTime.now().add(
+                                                const Duration(days: 7),
+                                              ),
+                                          firstDate: DateTime.now(),
+                                          lastDate: DateTime(2100),
+                                        );
                                     if (picked != null) {
                                       setState(() {
                                         _expirationDate = picked;
@@ -652,8 +741,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.restaurant_menu_outlined,
-                                  color: colorScheme.primary),
+                              Icon(
+                                Icons.restaurant_menu_outlined,
+                                color: colorScheme.primary,
+                              ),
                               const SizedBox(width: StyleTokens.spacingS),
                               Text(
                                 'Informações nutricionais',
@@ -671,7 +762,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   controller: _caloriesController,
                                   label: 'Calorias (kcal)',
                                   keyboardType: TextInputType.number,
-                                  prefixIcon: const Icon(Icons.local_fire_department_outlined),
+                                  prefixIcon: const Icon(
+                                    Icons.local_fire_department_outlined,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: StyleTokens.spacingM),
@@ -712,7 +805,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ),
                     const SizedBox(height: StyleTokens.spacingXL),
                     AppButton(
-                      text: widget.productToEdit != null ? 'Atualizar produto' : 'Adicionar produto',
+                      text: widget.productToEdit != null
+                          ? 'Atualizar produto'
+                          : 'Adicionar produto',
                       onPressed: () {
                         if (_isLoading) return;
                         _saveProduct();
@@ -725,10 +820,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     OutlinedButton.icon(
                       onPressed: _isLoading ? null : _recognizeFood,
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: StyleTokens.spacingM),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: StyleTokens.spacingM,
+                        ),
                         side: BorderSide(color: colorScheme.primary),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(StyleTokens.radiusM),
+                          borderRadius: BorderRadius.circular(
+                            StyleTokens.radiusM,
+                          ),
                         ),
                       ),
                       icon: Icon(
@@ -749,11 +848,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ),
                     OutlinedButton.icon(
                       onPressed: _isLoading ? null : _addByPhotoOCR,
-                      icon: Icon(Icons.photo_camera_back_outlined, color: _isLoading ? colorScheme.onSurfaceVariant : colorScheme.secondary),
+                      icon: Icon(
+                        Icons.photo_camera_back_outlined,
+                        color: _isLoading
+                            ? colorScheme.onSurfaceVariant
+                            : colorScheme.secondary,
+                      ),
                       label: Text(
                         'Adicionar via Foto/OCR',
                         style: theme.textTheme.labelLarge?.copyWith(
-                          color: _isLoading ? colorScheme.onSurfaceVariant : colorScheme.secondary,
+                          color: _isLoading
+                              ? colorScheme.onSurfaceVariant
+                              : colorScheme.secondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

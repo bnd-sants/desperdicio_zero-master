@@ -7,13 +7,15 @@ import 'package:desperdicio_zero/models/notification_model.dart';
 import 'package:desperdicio_zero/services/notification_service.dart' as service;
 import 'package:desperdicio_zero/models/product_model.dart';
 
-final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<AppNotification>>((ref) {
-  return NotificationsNotifier();
-});
+final notificationsProvider =
+    StateNotifierProvider<NotificationsNotifier, List<AppNotification>>((ref) {
+      return NotificationsNotifier();
+    });
 
 class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
   static const String _storageKey = 'notifications';
-  final service.NotificationService _notificationService = service.NotificationService.instance;
+  final service.NotificationService _notificationService =
+      service.NotificationService.instance;
 
   NotificationsNotifier() : super([]) {
     loadNotifications();
@@ -24,7 +26,7 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final notificationsJson = prefs.getStringList(_storageKey) ?? [];
-      
+
       state = notificationsJson
           .map((json) => AppNotification.fromJson(jsonDecode(json)))
           .toList();
@@ -58,7 +60,7 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
     for (final id in notificationIds) {
       await _notificationService.cancelNotification(id.hashCode);
     }
-    
+
     // Depois remove da lista
     state = state.where((n) => !notificationIds.contains(n.id)).toList();
     await _saveNotifications();
@@ -72,19 +74,25 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
   }
 
   // Agenda notificações para produtos próximos ao vencimento
-  Future<void> scheduleProductNotifications(List<Product> products, WidgetRef ref) async {
+  Future<void> scheduleProductNotifications(
+    List<Product> products,
+    WidgetRef ref,
+  ) async {
     final now = DateTime.now();
-    
+
     for (final product in products) {
       try {
-        if (product.expirationDate != null && product.name.isNotEmpty && product.id.isNotEmpty) {
+        if (product.expirationDate != null &&
+            product.name.isNotEmpty &&
+            product.id.isNotEmpty) {
           final difference = product.expirationDate!.difference(now).inDays;
 
           if (difference >= 0 && difference <= 3) {
-            await service.NotificationService.instance.scheduleStandardProductNotifications(
-              ref: ref,
-              product: product,
-            );
+            await service.NotificationService.instance
+                .scheduleStandardProductNotifications(
+                  ref: ref,
+                  product: product,
+                );
 
             // Adiciona à lista de notificações
             await addNotification(
@@ -124,6 +132,7 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
           createdAt: n.createdAt,
           payload: n.payload,
           isSelected: !n.isSelected,
+          isRead: n.isRead,
         );
       }
       return n;
@@ -142,6 +151,7 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
         createdAt: n.createdAt,
         payload: n.payload,
         isSelected: !allSelected,
+        isRead: n.isRead,
       );
     }).toList();
     await _saveNotifications();
@@ -154,4 +164,43 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
   // Obtém IDs das notificações selecionadas
   List<String> get selectedNotificationIds =>
       state.where((n) => n.isSelected).map((n) => n.id).toList();
+
+  int getUnreadCount() {
+    return state.where((n) => !n.isRead).length;
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    state = state.map((n) {
+      if (n.id == notificationId) {
+        return AppNotification(
+          id: n.id,
+          title: n.title,
+          body: n.body,
+          type: n.type,
+          createdAt: n.createdAt,
+          payload: n.payload,
+          isSelected: n.isSelected,
+          isRead: true,
+        );
+      }
+      return n;
+    }).toList();
+    await _saveNotifications();
+  }
+
+  Future<void> markAllRead() async {
+    state = state.map((n) {
+      return AppNotification(
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        type: n.type,
+        createdAt: n.createdAt,
+        payload: n.payload,
+        isSelected: n.isSelected,
+        isRead: true,
+      );
+    }).toList();
+    await _saveNotifications();
+  }
 }

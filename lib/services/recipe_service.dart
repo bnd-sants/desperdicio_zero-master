@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:desperdicio_zero/models/recipe_model.dart';
 import 'package:flutter/foundation.dart';
+import 'package:desperdicio_zero/utils/logger_util.dart' as logger;
 
 // Extensão para filtrar por múltiplos valores
 extension PostgrestFilterBuilderExtensions on PostgrestFilterBuilder {
@@ -39,23 +40,23 @@ class RecipeService {
   Future<List<Recipe>> getRecipes() async {
     try {
       final currentUserId = _supabase.auth.currentUser?.id ?? '';
-      print('🔄 Buscando receitas para o usuário: $currentUserId');
+      logger.logInfo('🔄 Buscando receitas para o usuário: $currentUserId');
       
       // Busca todas as receitas
-      print('🔍 Buscando receitas...');
+      logger.logInfo('🔍 Buscando receitas...');
       final recipesResponse = await _supabase
           .from('recipes')
           .select('*')
           .order('created_at', ascending: false);
           
       if (kDebugMode) {
-        print('📋 Estrutura da resposta das receitas:');
-        print('- Total de receitas: ${recipesResponse.length}');
+        logger.logDebug('📋 Estrutura da resposta das receitas:');
+        logger.logDebug('- Total de receitas: ${recipesResponse.length}');
         if (recipesResponse.isNotEmpty) {
-          print('- Chaves disponíveis: ${recipesResponse[0].keys.toList()}');
-          print('- Primeira receita: ${recipesResponse[0]}');
+          logger.logDebug('- Chaves disponíveis: ${recipesResponse[0].keys.toList()}');
+          logger.logDebug('- Primeira receita: ${recipesResponse[0]}');
         } else {
-          print('Nenhuma receita encontrada no banco de dados');
+          logger.logDebug('Nenhuma receita encontrada no banco de dados');
         }
       }
 
@@ -65,7 +66,7 @@ class RecipeService {
 
       final recipeIds = recipesResponse.map((r) => r['id'].toString()).toList();
       
-      print('🔍 Buscando produtos para ${recipeIds.length} receitas...');
+      logger.logInfo('🔍 Buscando produtos para ${recipeIds.length} receitas...');
       // Busca os produtos das receitas com JOIN na tabela itens para pegar o nome
       final recipeProductsResponse = await _supabase
           .from('recipe_itens')
@@ -76,22 +77,22 @@ class RecipeService {
           .filterByList('recipe_id', recipeIds);
           
       if (kDebugMode) {
-        print('📦 Produtos de receitas encontrados:');
-        print('- Total de itens: ${recipeProductsResponse.length}');
+        logger.logDebug('📦 Produtos de receitas encontrados:');
+        logger.logDebug('- Total de itens: ${recipeProductsResponse.length}');
         if (recipeProductsResponse.isNotEmpty) {
-          print('- Primeiro item: ${recipeProductsResponse[0]}');
+          logger.logDebug('- Primeiro item: ${recipeProductsResponse[0]}');
         }
       }
           
       if (kDebugMode) {
-        print('📦 Produtos de receitas encontrados:');
-        print('- Total de associações: ${recipeProductsResponse.length}');
+        logger.logDebug('📦 Produtos de receitas encontrados:');
+        logger.logDebug('- Total de associações: ${recipeProductsResponse.length}');
         if (recipeProductsResponse.isNotEmpty) {
-          print('- Primeiro produto de receita: ${recipeProductsResponse[0]}');
+          logger.logDebug('- Primeiro produto de receita: ${recipeProductsResponse[0]}');
         }
       }
 
-      print('✨ Total de associações de produtos de receitas: ${recipeProductsResponse.length}');
+      logger.logInfo('✨ Total de associações de produtos de receitas: ${recipeProductsResponse.length}');
       final recipes = <Recipe>[];
       
       for (var recipeData in recipesResponse) {
@@ -153,19 +154,19 @@ class RecipeService {
           );
           
           if (kDebugMode) {
-            print('✅ Receita processada: ${recipe.title} (${recipe.products.length} produtos)');
+            logger.logDebug('✅ Receita processada: ${recipe.title} (${recipe.products.length} produtos)');
           }
 
           recipes.add(recipe);
         } catch (e) {
-          print('❌ Erro ao processar receita ${recipeData['id']}: $e');
+          logger.logError('❌ Erro ao processar receita ${recipeData['id']}: $e', e);
         }
       }
 
-      print('✨ Total de receitas processadas com sucesso: ${recipes.length}');
+      logger.logInfo('✨ Total de receitas processadas com sucesso: ${recipes.length}');
       return recipes;
     } catch (e) {
-      print('❌ Erro ao buscar receitas: $e');
+      logger.logError('❌ Erro ao buscar receitas: $e', e);
       rethrow;
     }
   }

@@ -8,6 +8,7 @@ const allCategories = [
 ];
 
 class NotificationPreferencesScreen extends ConsumerWidget {
+  const NotificationPreferencesScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(notificationPreferencesProvider);

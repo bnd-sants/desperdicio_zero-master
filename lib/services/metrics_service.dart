@@ -20,7 +20,7 @@ class ProductMetrics {
   });
 
   factory ProductMetrics.fromMap(Map<String, dynamic> data) {
-    double _numToDouble(dynamic value) {
+    double numToDouble(dynamic value) {
       if (value == null) return 0;
       if (value is num) return value.toDouble();
       return double.tryParse(value.toString()) ?? 0;
@@ -32,8 +32,8 @@ class ProductMetrics {
       expiredItems: (data['expired_items'] as num?)?.toInt() ?? 0,
       expiringSoonItems: (data['expiring_soon_items'] as num?)?.toInt() ?? 0,
       activeItems: (data['active_items'] as num?)?.toInt() ?? 0,
-      totalQuantity: _numToDouble(data['total_quantity']),
-      activeQuantity: _numToDouble(data['active_quantity']),
+      totalQuantity: numToDouble(data['total_quantity']),
+      activeQuantity: numToDouble(data['active_quantity']),
     );
   }
 }
@@ -58,7 +58,7 @@ class GamificationSummary {
   });
 
   factory GamificationSummary.fromMap(Map<String, dynamic> data) {
-    DateTime? _parseDate(dynamic value) {
+    DateTime? parseDate(dynamic value) {
       if (value is DateTime) return value;
       if (value is String && value.isNotEmpty) {
         return DateTime.tryParse(value);
@@ -70,7 +70,7 @@ class GamificationSummary {
       xpTotal: (data['xp_total'] as num?)?.toInt() ?? 0,
       currentLevel: (data['current_level'] as num?)?.toInt() ?? 1,
       xpNextLevel: (data['xp_next_level'] as num?)?.toInt() ?? 200,
-      lastReset: _parseDate(data['last_reset']),
+      lastReset: parseDate(data['last_reset']),
       completedMissions: (data['completed_missions'] as num?)?.toInt() ?? 0,
       activeMissions: (data['active_missions'] as num?)?.toInt() ?? 0,
       unlockedBadges: (data['unlocked_badges'] as num?)?.toInt() ?? 0,

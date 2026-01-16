@@ -137,7 +137,7 @@ class AppTheme {
         color: lightBackground,
         surfaceTintColor: lightBackground,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shadowColor: Colors.black.withOpacity(0.05),
+      shadowColor: Colors.black.withValues(alpha: 0.05),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -157,7 +157,6 @@ class AppTheme {
   static ThemeData dark() {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
-      useMaterial3: true,
       colorScheme: base.colorScheme.copyWith(
         primary: darkPrimary, // Dark teal
         primaryContainer: whatsappTealGreen, // Teal for containers
@@ -254,7 +253,7 @@ class AppTheme {
         ),
         color: darkSurface,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shadowColor: Colors.black.withOpacity(0.2),
+        shadowColor: Colors.black.withValues(alpha: 0.2),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(

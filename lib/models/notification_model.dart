@@ -17,6 +17,7 @@ class AppNotification {
   final DateTime createdAt;
   final Map<String, dynamic>? payload;
   bool isSelected;
+  bool isRead;
 
   AppNotification({
     required this.id,
@@ -26,6 +27,7 @@ class AppNotification {
     required this.createdAt,
     this.payload,
     this.isSelected = false,
+    this.isRead = false,
   });
 
   // Métodos toJson/fromJson para persistência
@@ -37,6 +39,7 @@ class AppNotification {
         'createdAt': createdAt.toIso8601String(),
         'payload': payload,
         'isSelected': isSelected,
+        'isRead': isRead,
       };
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
@@ -48,6 +51,7 @@ class AppNotification {
       createdAt: DateTime.parse(json['createdAt'] as String),
       payload: json['payload'] as Map<String, dynamic>?,
       isSelected: json['isSelected'] as bool? ?? false,
+      isRead: json['isRead'] as bool? ?? false,
     );
   }
 }

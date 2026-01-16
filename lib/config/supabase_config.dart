@@ -1,20 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SupabaseConfig {
-  // URLs e chaves para produção
-  static const String _prodUrl = 'https://buuzrnplodxzzmcgstxw.supabase.co';
-  static const String _prodAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1dXpybnBsb2R4enptY2dzdHh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzODk5ODEsImV4cCI6MjA3MTk2NTk4MX0.6ze2FEZ74cDKAbNFp7ra_lrkO4uIwZxwNBCPp42OVEE';
-
-  // URLs de redirecionamento
-  static const String _redirectUrl = 'com.example.desperdicio_zero://auth-callback';
-  static const String _resetPasswordUrl = 'com.example.desperdicio_zero://reset-password';
-
-  // Configuração para sempre usar produção
-  static String get url => _prodUrl;
-  static String get anonKey => _prodAnonKey;
-  static String get redirectUrl => _redirectUrl;
-  static String get resetPasswordUrl => _resetPasswordUrl;
+  static String get url => dotenv.env['SUPABASE_URL'] ?? '';
+  static String get anonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+  static String get redirectUrl => dotenv.env['SUPABASE_REDIRECT_URL'] ?? 'com.example.desperdicio_zero://auth-callback';
+  static String get resetPasswordUrl => dotenv.env['SUPABASE_RESET_PASSWORD_URL'] ?? 'com.example.desperdicio_zero://reset-password';
 
   // Configurações de tempo limite (opcional)
   static const int authTimeout = 30; // segundos
@@ -31,6 +23,9 @@ class SupabaseConfig {
   // Método para inicializar o Supabase
   static Future<void> initialize() async {
     try {
+      if (url.isEmpty || anonKey.isEmpty) {
+        throw Exception('Supabase environment variables are missing');
+      }
       if (kDebugMode) {
         print('🔵 Inicializando Supabase...');
         print('🔵 URL: $url');

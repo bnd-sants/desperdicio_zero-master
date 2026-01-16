@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/core/providers/notifications_provider.dart';
 import 'package:desperdicio_zero/models/notification_model.dart' as model;
+import 'package:desperdicio_zero/services/product_service.dart';
+import 'package:desperdicio_zero/models/product_model.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
@@ -29,7 +32,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               onPressed: _clearSelected,
               icon: const Icon(Icons.delete_outline),
               label: Text(
-                ref.read(notificationsProvider.notifier).selectedNotificationIds.isEmpty
+                ref
+                        .read(notificationsProvider.notifier)
+                        .selectedNotificationIds
+                        .isEmpty
                     ? 'Limpar todas'
                     : 'Limpar selecionadas',
                 style: const TextStyle(color: Colors.white),
@@ -40,12 +46,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  AppBar _buildAppBar(BuildContext context, List<model.AppNotification> notifications) {
+  AppBar _buildAppBar(
+    BuildContext context,
+    List<model.AppNotification> notifications,
+  ) {
     return AppBar(
       title: _isSelecting
-          ? Text('${ref.read(notificationsProvider.notifier).selectedNotificationIds.length} selecionadas')
+          ? Text(
+              '${ref.read(notificationsProvider.notifier).selectedNotificationIds.length} selecionadas',
+            )
           : const Text('Notificações'),
-      backgroundColor: _isSelecting ? Colors.grey[200] : const Color(0xFF25D366),
+      backgroundColor: _isSelecting
+          ? Colors.grey[200]
+          : const Color(0xFF25D366),
       foregroundColor: _isSelecting ? Colors.black87 : Colors.white,
       elevation: _isSelecting ? 0 : null,
       leading: _isSelecting
@@ -71,8 +84,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           TextButton(
             onPressed: _selectAll,
             child: Text(
-              ref.read(notificationsProvider.notifier).selectedNotificationIds.length ==
-                  ref.read(notificationsProvider).length
+              ref
+                          .read(notificationsProvider.notifier)
+                          .selectedNotificationIds
+                          .length ==
+                      ref.read(notificationsProvider).length
                   ? 'Desmarcar todas'
                   : 'Selecionar todas',
               style: const TextStyle(
@@ -107,16 +123,17 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           const SizedBox(height: 8),
           Text(
             'Novas notificações aparecerão aqui',
-            style: TextStyle(
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(color: Colors.grey[500]),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationsList(List<model.AppNotification> notifications, ThemeData theme) {
+  Widget _buildNotificationsList(
+    List<model.AppNotification> notifications,
+    ThemeData theme,
+  ) {
     return ListView.builder(
       itemCount: notifications.length,
       itemBuilder: (context, index) {
@@ -126,7 +143,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationItem(model.AppNotification notification, ThemeData theme) {
+  Widget _buildNotificationItem(
+    model.AppNotification notification,
+    ThemeData theme,
+  ) {
     final isSelected = notification.isSelected;
 
     return Card(
@@ -142,7 +162,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         trailing: _isSelecting
             ? Checkbox(
                 value: isSelected,
-                onChanged: (value) => _toggleNotificationSelection(notification.id),
+                onChanged: (value) =>
+                    _toggleNotificationSelection(notification.id),
                 activeColor: const Color(0xFF25D366),
               )
             : Text(
@@ -207,7 +228,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   void _clearSelected() async {
-    final selectedIds = ref.read(notificationsProvider.notifier).selectedNotificationIds;
+    final selectedIds = ref
+        .read(notificationsProvider.notifier)
+        .selectedNotificationIds;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -235,7 +258,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       if (selectedIds.isEmpty) {
         await ref.read(notificationsProvider.notifier).clearAllNotifications();
       } else {
-        await ref.read(notificationsProvider.notifier).removeSelectedNotifications(selectedIds);
+        await ref
+            .read(notificationsProvider.notifier)
+            .removeSelectedNotifications(selectedIds);
       }
 
       setState(() {
@@ -245,9 +270,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(selectedIds.isEmpty
-                ? 'Todas as notificações foram removidas'
-                : '${selectedIds.length} notificações removidas'),
+            content: Text(
+              selectedIds.isEmpty
+                  ? 'Todas as notificações foram removidas'
+                  : '${selectedIds.length} notificações removidas',
+            ),
             backgroundColor: const Color(0xFF25D366),
           ),
         );
@@ -256,16 +283,34 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   void _handleNotificationTap(model.AppNotification notification) {
-    switch (notification.type) {
-      case model.NotificationType.productExpiring:
-      case model.NotificationType.productExpired:
-        final productId = notification.payload?['productId'];
-        if (productId != null) {
-          // Navegar para a tela do produto
-        }
-        break;
-      default:
-        break;
+    ref
+        .read(notificationsProvider.notifier)
+        .markNotificationRead(notification.id);
+    final route = notification.payload?['route'] as String?;
+    if (route != null && route.isNotEmpty) {
+      Navigator.of(context).pushNamed(route, arguments: notification.payload);
+      return;
+    }
+
+    if (notification.type == model.NotificationType.productExpiring ||
+        notification.type == model.NotificationType.productExpired) {
+      final productId = notification.payload?['productId'] as String?;
+      if (productId != null) {
+        final service = ProductService();
+        service
+            .getProduct(productId)
+            .then((Product product) {
+              if (!mounted) return;
+              Navigator.pushNamed(
+                context,
+                '/product-detail',
+                arguments: product,
+              );
+            })
+            .catchError((_) {
+              // Fallback: abre tela de notificações mesmo assim
+            });
+      }
     }
   }
 }

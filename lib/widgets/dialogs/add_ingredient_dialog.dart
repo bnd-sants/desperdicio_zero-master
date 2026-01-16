@@ -12,10 +12,10 @@ class AddIngredientDialog extends StatefulWidget {
   });
 
   @override
-  _AddIngredientDialogState createState() => _AddIngredientDialogState();
+  AddIngredientDialogState createState() => AddIngredientDialogState();
 }
 
-class _AddIngredientDialogState extends State<AddIngredientDialog>
+class AddIngredientDialogState extends State<AddIngredientDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;

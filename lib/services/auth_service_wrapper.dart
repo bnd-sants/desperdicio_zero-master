@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:desperdicio_zero/models/user_profile.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:desperdicio_zero/utils/logger_util.dart' as logger;
 
 class AuthService {
   final SupabaseClient supabaseClient;
@@ -13,20 +14,19 @@ class AuthService {
   // Método para fazer login
   Future<AuthResponse> signIn(String email, String password) async {
     try {
-      print('Tentando fazer login com email: $email');
+      logger.logInfo('Tentando fazer login com email: $email');
       
       final response = await supabaseClient.auth.signInWithPassword(
         email: email,
         password: password,
       );
       
-      print('Resposta do login: ${response.user?.email}');
-      print('Sessão: ${response.session != null ? 'válida' : 'inválida'}');
+      logger.logInfo('Resposta do login: ${response.user?.email}');
+      logger.logInfo('Sessão: ${response.session != null ? 'válida' : 'inválida'}');
       
       return response;
     } catch (e, stackTrace) {
-      print('Erro durante o login: $e');
-      print('Stack trace: $stackTrace');
+      logger.logError('Erro durante o login: $e', e, stackTrace);
       rethrow;
     }
   }

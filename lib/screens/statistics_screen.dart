@@ -42,11 +42,11 @@ Widget _buildXpProgressChart(
     ),
     PieChartSectionData(
       value: xpRemaining,
-      color: theme.colorScheme.surfaceVariant,
+      color: theme.colorScheme.surfaceContainerHighest,
       title: xpRemaining == 0 ? '100%' : '${(xpRemaining / total * 100).round()}%',
       radius: 60,
       titleStyle: theme.textTheme.bodySmall?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
+        color: theme.colorScheme.onSurface,
       ),
     ),
   ];

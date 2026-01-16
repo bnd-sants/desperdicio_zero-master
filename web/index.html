@@ -33,6 +33,13 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('firebase-messaging-sw.js')
+        .then(function(){ console.log('SW registered: firebase-messaging-sw.js'); })
+        .catch(function(e){ console.warn('SW register failed', e); });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

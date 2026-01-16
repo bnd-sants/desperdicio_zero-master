@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationPreferences {
   final int diasAntes;
@@ -28,13 +29,14 @@ class NotificationPreferences {
     bool? receberEmails,
     bool? receberPush,
   }) => NotificationPreferences(
-        diasAntes: diasAntes ?? this.diasAntes,
-        horario: horario ?? this.horario,
-        categoriasSilenciadas: categoriasSilenciadas ?? this.categoriasSilenciadas,
-        notificacaoMotivacional: notificacaoMotivacional ?? this.notificacaoMotivacional,
-        receberEmails: receberEmails ?? this.receberEmails,
-        receberPush: receberPush ?? this.receberPush,
-      );
+    diasAntes: diasAntes ?? this.diasAntes,
+    horario: horario ?? this.horario,
+    categoriasSilenciadas: categoriasSilenciadas ?? this.categoriasSilenciadas,
+    notificacaoMotivacional:
+        notificacaoMotivacional ?? this.notificacaoMotivacional,
+    receberEmails: receberEmails ?? this.receberEmails,
+    receberPush: receberPush ?? this.receberPush,
+  );
 
   Map<String, dynamic> toJson() => {
     'diasAntes': diasAntes,
@@ -53,7 +55,9 @@ class NotificationPreferences {
         hour: int.tryParse(horarioSplit[0]) ?? 8,
         minute: int.tryParse(horarioSplit[1]) ?? 0,
       ),
-      categoriasSilenciadas: List<String>.from(json['categoriasSilenciadas'] ?? []),
+      categoriasSilenciadas: List<String>.from(
+        json['categoriasSilenciadas'] ?? [],
+      ),
       notificacaoMotivacional: json['notificacaoMotivacional'] as bool? ?? true,
       receberEmails: json['receberEmails'] as bool? ?? true,
       receberPush: json['receberPush'] as bool? ?? true,
@@ -61,7 +65,8 @@ class NotificationPreferences {
   }
 }
 
-class NotificationPreferencesNotifier extends StateNotifier<NotificationPreferences> {
+class NotificationPreferencesNotifier
+    extends StateNotifier<NotificationPreferences> {
   static const _prefsKey = 'notification_preferences';
 
   NotificationPreferencesNotifier() : super(const NotificationPreferences()) {
@@ -77,21 +82,78 @@ class NotificationPreferencesNotifier extends StateNotifier<NotificationPreferen
         state = NotificationPreferences.fromJson(decoded);
       } catch (_) {}
     }
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      try {
+        final remote = await supabase
+            .from('user_preferences')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (remote != null) {
+          final diasAntes = (remote['dias_antes'] as num?)?.toInt();
+          final horarioStr = remote['horario'] as String?;
+          TimeOfDay? horario;
+          if (horarioStr != null && horarioStr.contains(':')) {
+            final parts = horarioStr.split(':');
+            final h = int.tryParse(parts[0]);
+            final m = int.tryParse(parts[1]);
+            if (h != null && m != null) {
+              horario = TimeOfDay(hour: h, minute: m);
+            }
+          }
+          final categorias =
+              (remote['categorias_silenciadas'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList();
+          final receberEmails = remote['receber_emails'] as bool?;
+          final receberPush = remote['receber_push'] as bool?;
+          state = state.copyWith(
+            diasAntes: diasAntes ?? state.diasAntes,
+            horario: horario ?? state.horario,
+            categoriasSilenciadas: categorias ?? state.categoriasSilenciadas,
+            receberEmails: receberEmails ?? state.receberEmails,
+            receberPush: receberPush ?? state.receberPush,
+          );
+          await save();
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, jsonEncode(state.toJson()));
+    final jsonString = jsonEncode(state.toJson());
+    await prefs.setString(_prefsKey, jsonString);
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      try {
+        final hh = state.horario.hour.toString().padLeft(2, '0');
+        final mm = state.horario.minute.toString().padLeft(2, '0');
+        await supabase.from('user_preferences').upsert({
+          'user_id': user.id,
+          'dias_antes': state.diasAntes,
+          'horario': '$hh:$mm',
+          'categorias_silenciadas': state.categoriasSilenciadas,
+          'receber_emails': state.receberEmails,
+          'receber_push': state.receberPush,
+        });
+      } catch (_) {}
+    }
   }
 
   void setDiasAntes(int value) {
     state = state.copyWith(diasAntes: value);
     save();
   }
+
   void setHorario(TimeOfDay value) {
     state = state.copyWith(horario: value);
     save();
   }
+
   void toggleCategoria(String categoria) {
     final atual = [...state.categoriasSilenciadas];
     if (atual.contains(categoria)) {
@@ -102,18 +164,22 @@ class NotificationPreferencesNotifier extends StateNotifier<NotificationPreferen
     state = state.copyWith(categoriasSilenciadas: atual);
     save();
   }
+
   void setMotivacional(bool value) {
     state = state.copyWith(notificacaoMotivacional: value);
     save();
   }
+
   void setReceberEmails(bool value) {
     state = state.copyWith(receberEmails: value);
     save();
   }
+
   void setReceberPush(bool value) {
     state = state.copyWith(receberPush: value);
     save();
   }
+
   void reset() {
     state = const NotificationPreferences();
     save();
@@ -121,5 +187,7 @@ class NotificationPreferencesNotifier extends StateNotifier<NotificationPreferen
 }
 
 final notificationPreferencesProvider =
-    StateNotifierProvider<NotificationPreferencesNotifier, NotificationPreferences>(
-        (ref) => NotificationPreferencesNotifier());
+    StateNotifierProvider<
+      NotificationPreferencesNotifier,
+      NotificationPreferences
+    >((ref) => NotificationPreferencesNotifier());

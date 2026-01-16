@@ -9,18 +9,19 @@ class EatingLoader extends StatefulWidget {
   final double size;
 
   const EatingLoader({
-    Key? key,
+    super.key,
     this.maxBowls = 5,
     this.loadingText = 'Carregando receitas...',
     this.onTap,
     this.size = 150.0,
-  }) : super(key: key);
+  });
 
   @override
-  _EatingLoaderState createState() => _EatingLoaderState();
+  EatingLoaderState createState() => EatingLoaderState();
 }
 
-class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderStateMixin {
+class EatingLoaderState extends State<EatingLoader>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   int _currentBowls = 0;
@@ -37,9 +38,10 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
       vsync: this,
     )..repeat();
 
-    _animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _startLoading();
   }
@@ -70,14 +72,14 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
       } else {
         _controller.stop();
       }
-      
+
       // Acelera o carregamento quando toca
       _eatProgress += 0.3;
       if (_eatProgress >= 1.0) {
         _currentBowls = (_currentBowls + 1) % (widget.maxBowls + 1);
         _eatProgress = 0.0;
       }
-      
+
       widget.onTap?.call();
     });
   }
@@ -94,7 +96,7 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    
+
     return GestureDetector(
       onTap: _handleTap,
       child: Column(
@@ -110,14 +112,16 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
                   return Transform.translate(
                     offset: Offset(0, -5 * _animation.value),
                     child: Icon(
-                      _isEating ? Icons.emoji_emotions : Icons.emoji_emotions_outlined,
+                      _isEating
+                          ? Icons.emoji_emotions
+                          : Icons.emoji_emotions_outlined,
                       size: widget.size * 0.6,
                       color: isDark ? primaryColor : Colors.orange[700],
                     ),
                   );
                 },
               ),
-              
+
               // Mão com colher
               Positioned(
                 right: widget.size * 0.2,
@@ -126,19 +130,21 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
                   animation: _animation,
                   builder: (context, child) {
                     return Transform.rotate(
-                      angle: _isEating 
+                      angle: _isEating
                           ? -0.3 * (1 - _animation.value) * 2
                           : -0.3,
                       child: Icon(
                         Icons.restaurant,
                         size: widget.size * 0.3,
-                        color: isDark ? primaryColor.withValues(alpha: 0.8) : Colors.brown[700],
+                        color: isDark
+                            ? primaryColor.withValues(alpha: 0.8)
+                            : Colors.brown[700],
                       ),
                     );
                   },
                 ),
               ),
-              
+
               // Tigelas empilhadas
               Positioned(
                 bottom: 0,
@@ -150,7 +156,7 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
                         scale: 1.0 - _eatProgress * 0.5,
                         child: _buildBowl(),
                       ),
-                    
+
                     // Tigelas já comidas
                     ...List.generate(
                       _currentBowls - 1,
@@ -161,23 +167,27 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
               ),
             ],
           ),
-          
+
           const SizedBox(height: 20),
           Text(
             widget.loadingText,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: isDark ? onSurface.withValues(alpha: 0.9) : Colors.orange[800],
-                  fontWeight: FontWeight.bold,
-                ),
+              color: isDark
+                  ? onSurface.withValues(alpha: 0.9)
+                  : Colors.orange[800],
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
-          if (_isEating) 
+          if (_isEating)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text(
                 'Comendo... Toque para acelerar!',
                 style: TextStyle(
-                  color: isDark ? onSurface.withValues(alpha: 0.7) : Colors.orange[600],
+                  color: isDark
+                      ? onSurface.withValues(alpha: 0.7)
+                      : Colors.orange[600],
                   fontStyle: FontStyle.italic,
                 ),
                 textAlign: TextAlign.center,
@@ -191,13 +201,11 @@ class _EatingLoaderState extends State<EatingLoader> with SingleTickerProviderSt
   Widget _buildBowl() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
-    
+
     return Icon(
       Icons.ramen_dining,
       size: widget.size * 0.3,
-      color: isDark 
-          ? primaryColor.withValues(alpha: 0.6) 
-          : Colors.brown[300],
+      color: isDark ? primaryColor.withValues(alpha: 0.6) : Colors.brown[300],
     );
   }
 }

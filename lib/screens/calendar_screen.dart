@@ -190,7 +190,7 @@ Widget _buildDayCell({
   final backgroundColor = isSelected
       ? colorScheme.primary
       : isToday
-          ? colorScheme.primary.withOpacity(0.2)
+          ? colorScheme.primary.withValues(alpha: 0.2)
           : baseColor;
   final textColor = isSelected
       ? colorScheme.onPrimary
@@ -206,7 +206,7 @@ Widget _buildDayCell({
       border: Border.all(
         color: isSelected
             ? colorScheme.primary
-            : baseColor?.withOpacity(0.4) ?? Colors.transparent,
+            : baseColor?.withValues(alpha: 0.4) ?? Colors.transparent,
         width: isSelected ? 1.5 : 1,
       ),
     ),
@@ -230,8 +230,8 @@ Color? _heatmapColorForCount(
   if (eventCount == 0 || maxEvents == 0) return colorScheme.surfaceContainerHighest;
   final ratio = eventCount / maxEvents;
   return Color.lerp(
-    colorScheme.primary.withOpacity(0.1),
-    colorScheme.error.withOpacity(0.4),
+    colorScheme.primary.withValues(alpha: 0.1),
+    colorScheme.error.withValues(alpha: 0.4),
     ratio.clamp(0, 1),
   );
 }

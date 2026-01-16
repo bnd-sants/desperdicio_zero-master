@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/models/gamification_models.dart';
@@ -591,13 +592,21 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return;
 
+    final baseMetadata = {
+      'device': {
+        'platform': Platform.operatingSystem,
+        'version': Platform.operatingSystemVersion,
+      },
+    };
+    final mergedMetadata = {...baseMetadata, ...?metadata};
+
     unawaited(_eventService.logEvent(
       userId: userId,
       eventType: type,
       title: title,
       description: description,
       xpChange: xpChange,
-      metadata: metadata,
+      metadata: mergedMetadata,
     ));
   }
 }

@@ -40,27 +40,30 @@ class LanguageSelector extends ConsumerWidget {
     final languageNotifier = ref.watch(languageProvider);
     final currentLocale = languageNotifier.locale;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final language in languages)
-          RadioListTile<Locale>(
-            title: Row(
-              children: [
-                Text(language.flag, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 16),
-                Text(language.name),
-              ],
+    return RadioGroup<Locale>(
+      groupValue: currentLocale,
+      onChanged: (Locale? value) {
+        if (value != null) {
+          languageNotifier.setLanguage(value);
+        }
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final language in languages)
+            RadioListTile<Locale>(
+              title: Row(
+                children: [
+                  Text(language.flag, style: const TextStyle(fontSize: 24)),
+                  const SizedBox(width: 16),
+                  Text(language.name),
+                ],
+              ),
+              value: language.locale,
+              selected: language.locale == currentLocale,
             ),
-            value: language.locale,
-            groupValue: currentLocale,
-            onChanged: (Locale? value) {
-              if (value != null) {
-                languageNotifier.setLanguage(value);
-              }
-            },
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

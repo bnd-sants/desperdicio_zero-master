@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Cores do WhatsApp
 class WhatsAppColors {
@@ -134,6 +135,25 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
         // Se não houver preferência salva, usa o tema do sistema
         state = ThemeMode.system;
       }
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        final remote = await supabase
+            .from('user_preferences')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (remote != null) {
+          final themeStr = remote['theme'] as String?;
+          if (themeStr == 'dark') {
+            state = ThemeMode.dark;
+          } else if (themeStr == 'light') {
+            state = ThemeMode.light;
+          } else if (themeStr == 'system') {
+            state = ThemeMode.system;
+          }
+        }
+      }
     } catch (e) {
       // Em caso de erro, usa o tema claro como padrão
       state = ThemeMode.light;
@@ -151,9 +171,46 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
         (state == ThemeMode.system && 
          PlatformDispatcher.instance.platformBrightness == Brightness.dark)
       );
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        await supabase.from('user_preferences').upsert({
+          'user_id': user.id,
+          'theme': state == ThemeMode.dark
+              ? 'dark'
+              : state == ThemeMode.light
+                  ? 'light'
+                  : 'system',
+        });
+      }
     } catch (e) {
       // Ignora erros ao salvar a preferência
     }
+  }
+  
+  Future<void> setTheme(ThemeMode mode) async {
+    state = mode;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(
+        _themeKey, 
+        state == ThemeMode.dark || 
+        (state == ThemeMode.system && 
+         PlatformDispatcher.instance.platformBrightness == Brightness.dark)
+      );
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        await supabase.from('user_preferences').upsert({
+          'user_id': user.id,
+          'theme': state == ThemeMode.dark
+              ? 'dark'
+              : state == ThemeMode.light
+                  ? 'light'
+                  : 'system',
+        });
+      }
+    } catch (_) {}
   }
   
   /// Retorna o tema atual baseado no modo selecionado

@@ -7,15 +7,17 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/core/providers/notification_preferences_provider.dart';
 import 'package:desperdicio_zero/models/product_model.dart';
+import 'package:desperdicio_zero/services/deep_link_service.dart';
+import 'package:desperdicio_zero/services/product_service.dart';
 
 // Tipos de notificações suportados
 enum NotificationType {
-  productExpiring,    // Produto próximo ao vencimento
-  productExpired,     // Produto vencido
-  shoppingList,       // Lembretes de lista de compras
-  consumptionTip,     // Dica de consumo
-  weeklySummary,      // Resumo semanal
-  achievementUnlocked // Conquista desbloqueada
+  productExpiring, // Produto próximo ao vencimento
+  productExpired, // Produto vencido
+  shoppingList, // Lembretes de lista de compras
+  consumptionTip, // Dica de consumo
+  weeklySummary, // Resumo semanal
+  achievementUnlocked, // Conquista desbloqueada
 }
 
 // Modelo para dados da notificação
@@ -49,12 +51,15 @@ class NotificationData {
       'actionRoute': actionRoute,
     };
   }
+
   factory NotificationData.fromMap(Map<String, dynamic> map) {
     return NotificationData(
       type: NotificationType.values[map['type'] as int],
       title: map['title'] as String,
       body: map['body'] as String,
-      payload: map['payload'] != null ? Map<String, dynamic>.from(map['payload'] as Map) : null,
+      payload: map['payload'] != null
+          ? Map<String, dynamic>.from(map['payload'] as Map)
+          : null,
       imageUrl: map['imageUrl'] as String?,
       actionTitle: map['actionTitle'] as String?,
       actionRoute: map['actionRoute'] as String?,
@@ -69,10 +74,10 @@ class NotificationData {
 class NotificationService with ChangeNotifier {
   static final NotificationService _instance = NotificationService._internal();
   static NotificationService get instance => _instance;
-  
+
   // Private constructor
   NotificationService._internal();
-  
+
   // Initialize method to be called at app startup
   static Future<NotificationService> initialize() async {
     await _instance._init();
@@ -81,17 +86,19 @@ class NotificationService with ChangeNotifier {
 
   late final FlutterLocalNotificationsPlugin _notificationsPlugin;
   bool _isInitialized = false;
-  
+
   FlutterLocalNotificationsPlugin get _notifications {
     if (!_isInitialized) {
-      throw StateError('NotificationService has not been initialized. Call NotificationService.initialize() first.');
+      throw StateError(
+        'NotificationService has not been initialized. Call NotificationService.initialize() first.',
+      );
     }
     return _notificationsPlugin;
   }
-  
+
   Future<void> _init() async {
     if (_isInitialized) return;
-    
+
     try {
       // Initialize timezones with error handling
       try {
@@ -100,22 +107,19 @@ class NotificationService with ChangeNotifier {
         debugPrint('Error initializing timezones: $e');
         tz.initializeTimeZones(); // Try again as fallback
       }
-      
+
       // Initialize the plugin
       _notificationsPlugin = FlutterLocalNotificationsPlugin();
-      
+
       // Request permissions
       try {
         // For iOS/macOS
         await _notificationsPlugin
             .resolvePlatformSpecificImplementation<
-                IOSFlutterLocalNotificationsPlugin>()
-            ?.requestPermissions(
-              alert: true,
-              badge: true,
-              sound: true,
-            );
-            
+              IOSFlutterLocalNotificationsPlugin
+            >()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+
         // For Android 13+
         final status = await Permission.notification.request();
         if (status.isDenied) {
@@ -124,36 +128,57 @@ class NotificationService with ChangeNotifier {
       } catch (e) {
         debugPrint('Error requesting notification permissions: $e');
       }
-      
+
       // Android settings
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-          
+
       // iOS settings
-      const DarwinInitializationSettings initializationSettingsIOS =
+      final DarwinInitializationSettings initializationSettingsIOS =
           DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-        defaultPresentAlert: true,
-        defaultPresentBadge: true,
-        defaultPresentSound: true,
-      );
-      
+            requestAlertPermission: true,
+            requestBadgePermission: true,
+            requestSoundPermission: true,
+            defaultPresentAlert: true,
+            defaultPresentBadge: true,
+            defaultPresentSound: true,
+            notificationCategories: <DarwinNotificationCategory>[
+              DarwinNotificationCategory(
+                'product_actions',
+                actions: <DarwinNotificationAction>[
+                  DarwinNotificationAction.plain(
+                    'view_product',
+                    'Ver produto',
+                    options: <DarwinNotificationActionOption>{
+                      DarwinNotificationActionOption.foreground,
+                    },
+                  ),
+                  DarwinNotificationAction.plain(
+                    'dismiss',
+                    'Dispensar',
+                    options: <DarwinNotificationActionOption>{
+                      DarwinNotificationActionOption.destructive,
+                    },
+                  ),
+                ],
+              ),
+            ],
+          );
+
       // Initialize settings for both platforms
-      const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsIOS,
-      );
-      
+      final InitializationSettings initializationSettings =
+          InitializationSettings(
+            android: initializationSettingsAndroid,
+            iOS: initializationSettingsIOS,
+          );
+
       // Initialize the plugin
       await _notificationsPlugin.initialize(
         initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-          debugPrint('Notificação clicada: ${response.payload}');
-        },
+        onDidReceiveNotificationResponse:
+            NotificationService.onDidReceiveNotificationResponse,
       );
-      
+
       _isInitialized = true;
       debugPrint('✅ NotificationService inicializado com sucesso');
     } catch (e, stackTrace) {
@@ -198,16 +223,8 @@ class NotificationService with ChangeNotifier {
     final id = DateTime.now().millisecondsSinceEpoch.remainder(1 << 31);
     final payloadJson = payload == null ? null : jsonEncode(payload);
 
-    await _notifications.show(
-      id,
-      title,
-      body,
-      details,
-      payload: payloadJson,
-    );
+    await _notifications.show(id, title, body, details, payload: payloadJson);
   }
-
-  
 
   Future<bool> _requestPermissions() async {
     try {
@@ -223,7 +240,9 @@ class NotificationService with ChangeNotifier {
       }
 
       if (status.isPermanentlyDenied) {
-        debugPrint('Permissão negada permanentemente, abrindo configurações...');
+        debugPrint(
+          'Permissão negada permanentemente, abrindo configurações...',
+        );
         await openAppSettings();
         return false;
       }
@@ -248,7 +267,8 @@ class NotificationService with ChangeNotifier {
         androidDetails = const AndroidNotificationDetails(
           'product_expiring_channel',
           'Aviso de Validade',
-          channelDescription: 'Notificações sobre produtos próximos do vencimento',
+          channelDescription:
+              'Notificações sobre produtos próximos do vencimento',
           importance: Importance.high,
           priority: Priority.high,
           color: Color(0xFF25D366), // Verde WhatsApp
@@ -256,6 +276,11 @@ class NotificationService with ChangeNotifier {
           enableVibration: true,
           playSound: true,
           showWhen: true,
+          groupKey: 'notifications_products',
+          actions: <AndroidNotificationAction>[
+            AndroidNotificationAction('view_product', 'Ver produto'),
+            AndroidNotificationAction('dismiss', 'Dispensar'),
+          ],
           styleInformation: BigTextStyleInformation(''),
         );
         iosDetails = const DarwinNotificationDetails(
@@ -278,6 +303,11 @@ class NotificationService with ChangeNotifier {
           enableVibration: true,
           playSound: true,
           showWhen: true,
+          groupKey: 'notifications_products',
+          actions: <AndroidNotificationAction>[
+            AndroidNotificationAction('view_product', 'Ver produto'),
+            AndroidNotificationAction('dismiss', 'Dispensar'),
+          ],
           styleInformation: BigTextStyleInformation(''),
         );
         iosDetails = const DarwinNotificationDetails(
@@ -373,10 +403,7 @@ class NotificationService with ChangeNotifier {
         break;
     }
 
-    return NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+    return NotificationDetails(android: androidDetails, iOS: iosDetails);
   }
 
   // Agenda uma notificação personalizada
@@ -398,7 +425,7 @@ class NotificationService with ChangeNotifier {
       }
 
       final details = _getNotificationDetails(notificationData.type);
-      
+
       if (repeatWeekly) {
         // Agenda notificação recorrente semanalmente
         await _notifications.periodicallyShow(
@@ -408,7 +435,8 @@ class NotificationService with ChangeNotifier {
           RepeatInterval.weekly,
           details,
           payload: notificationData.toJson(),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, // Permite notificações mesmo em modo de economia de bateria
+          androidScheduleMode: AndroidScheduleMode
+              .exactAllowWhileIdle, // Permite notificações mesmo em modo de economia de bateria
         );
       } else {
         // Agenda notificação única
@@ -426,7 +454,9 @@ class NotificationService with ChangeNotifier {
         );
       }
 
-      debugPrint('✅ Notificação agendada com sucesso: ${notificationData.title}');
+      debugPrint(
+        '✅ Notificação agendada com sucesso: ${notificationData.title}',
+      );
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao agendar notificação: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -435,17 +465,48 @@ class NotificationService with ChangeNotifier {
 
   // Configura o manipulador de notificações em segundo plano
   @pragma('vm:entry-point')
-  static Future<void> onDidReceiveNotificationResponse(NotificationResponse response) async {
+  static Future<void> onDidReceiveNotificationResponse(
+    NotificationResponse response,
+  ) async {
     try {
       if (response.payload != null) {
         final notificationData = NotificationData.fromJson(response.payload!);
-        debugPrint('Notificação clicada: ${notificationData.title}');
-        
-        // Aqui você pode adicionar lógica para navegar para telas específicas
-        // baseada no tipo de notificação ou no actionRoute
-        if (notificationData.actionRoute != null) {
-          // Exemplo: NavigationService.navigateTo(notificationData.actionRoute!);
-          debugPrint('Navegando para: ${notificationData.actionRoute}');
+        final nav = navigatorKey.currentState;
+        if (nav != null) {
+          if (response.actionId == 'dismiss') {
+            return;
+          }
+          if (response.actionId == 'view_product') {
+            final pid = notificationData.payload?['productId'] as String?;
+            if (pid != null && pid.isNotEmpty) {
+              try {
+                final product = await ProductService().getProduct(pid);
+                nav.pushNamed('/product-detail', arguments: product);
+                return;
+              } catch (_) {}
+            }
+          }
+          final route =
+              notificationData.actionRoute ??
+              (notificationData.payload != null
+                  ? notificationData.payload!['route'] as String?
+                  : null);
+          if (route != null && route.startsWith('/product/')) {
+            final productId = route.split('/product/').last;
+            try {
+              final product = await ProductService().getProduct(productId);
+              nav.pushNamed('/product-detail', arguments: product);
+              return;
+            } catch (_) {}
+          }
+          if (route != null && route.isNotEmpty) {
+            nav.pushNamed(route, arguments: notificationData.payload);
+          } else {
+            nav.pushNamed(
+              '/notifications',
+              arguments: notificationData.payload,
+            );
+          }
         }
       }
     } catch (e) {
@@ -457,15 +518,22 @@ class NotificationService with ChangeNotifier {
   Future<bool> areNotificationsEnabled() async {
     if (!_isInitialized) await initialize();
     return await _notifications
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions()
-        .then((bool? result) => result ?? false) ?? false;
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >()
+            ?.requestPermissions()
+            .then((bool? result) => result ?? false) ??
+        false;
   }
 
   // Gera um ID único baseado no tipo de notificação e parâmetros
-  static int _generateNotificationId(NotificationType type, {String? uniqueKey}) {
+  static int _generateNotificationId(
+    NotificationType type, {
+    String? uniqueKey,
+  }) {
     // Usa o hash do tipo de notificação e uma chave única se fornecida
-    final uniqueId = uniqueKey?.hashCode ?? DateTime.now().millisecondsSinceEpoch;
+    final uniqueId =
+        uniqueKey?.hashCode ?? DateTime.now().millisecondsSinceEpoch;
     return (type.index + 1) * 1000000 + (uniqueId % 1000000);
   }
 
@@ -568,16 +636,16 @@ class NotificationService with ChangeNotifier {
         return;
       }
     }
-    
+
     try {
       // Inicializa o timezone se ainda não foi inicializado
       tz.initializeTimeZones();
-      
+
       debugPrint('\n📅 Agendando notificação:');
       debugPrint('Título: $title');
       debugPrint('Mensagem: $body');
       debugPrint('Data agendada: $scheduledDate');
-      
+
       // Verifica permissões
       debugPrint('Verificando permissões...');
       final hasPermission = await _requestPermissions();
@@ -590,7 +658,7 @@ class NotificationService with ChangeNotifier {
       // Get current time in local timezone
       final now = tz.TZDateTime.now(tz.local);
       final scheduledDateTZ = tz.TZDateTime.from(scheduledDate, tz.local);
-      
+
       // If the date has already passed, don't schedule
       if (scheduledDateTZ.isBefore(now)) {
         debugPrint('⚠️ Data de agendamento já passou: $scheduledDateTZ');
@@ -601,7 +669,8 @@ class NotificationService with ChangeNotifier {
       const androidPlatformChannelSpecifics = AndroidNotificationDetails(
         'product_expiration_channel',
         'Notificações de Validade',
-        channelDescription: 'Notificações sobre produtos próximos do vencimento',
+        channelDescription:
+            'Notificações sobre produtos próximos do vencimento',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: false,
@@ -618,13 +687,13 @@ class NotificationService with ChangeNotifier {
 
       // Calculate the duration until the notification should be shown
       final duration = scheduledDateTZ.difference(now);
-      
+
       // Schedule the notification using a timer
       if (duration > Duration.zero) {
         try {
           // First, cancel any existing notification with the same ID
           await _notifications.cancel(id);
-          
+
           // Then schedule the new one
           await _notifications.periodicallyShow(
             id,
@@ -639,8 +708,10 @@ class NotificationService with ChangeNotifier {
           debugPrint('❌ Erro ao manipular notificação: $e');
           rethrow;
         }
-        
-        debugPrint('✅ Notificação agendada com sucesso para ${scheduledDateTZ.toString()}');
+
+        debugPrint(
+          '✅ Notificação agendada com sucesso para ${scheduledDateTZ.toString()}',
+        );
       }
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao agendar notificação: $e');
@@ -651,7 +722,7 @@ class NotificationService with ChangeNotifier {
       rethrow;
     }
   }
-  
+
   Future<void> scheduleProductExpirationNotification({
     required WidgetRef ref,
     required Product product,
@@ -664,15 +735,18 @@ class NotificationService with ChangeNotifier {
     final category = product.type ?? 'Outros';
     if (prefs.categoriasSilenciadas.contains(category)) {
       // Usuário optou por não receber alerta para esta categoria
-        return;
-      }
+      return;
+    }
     final diasAntes = prefs.diasAntes;
     final horario = prefs.horario;
     final expirationDate = product.expirationDate;
     if (expirationDate == null) return;
     final scheduledDate = DateTime(
-      expirationDate.year, expirationDate.month, expirationDate.day,
-      horario.hour, horario.minute
+      expirationDate.year,
+      expirationDate.month,
+      expirationDate.day,
+      horario.hour,
+      horario.minute,
     ).subtract(Duration(days: diasAntes));
 
     final notificationData = NotificationData(
@@ -753,7 +827,8 @@ class NotificationService with ChangeNotifier {
   // Cancela notificações de um produto específico
   Future<void> cancelProductNotifications(String productId) async {
     try {
-      final pendingNotifications = await _notifications.pendingNotificationRequests();
+      final pendingNotifications = await _notifications
+          .pendingNotificationRequests();
       for (final notification in pendingNotifications) {
         final payload = notification.payload;
         if (payload == null) continue;
@@ -781,6 +856,6 @@ class NotificationService with ChangeNotifier {
         .pendingNotificationRequests();
     return pendingNotifications.isNotEmpty;
   }
-  
+
   // Permission handling is now directly in _init() to avoid context dependency
 }

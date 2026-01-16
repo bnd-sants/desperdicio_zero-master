@@ -24,7 +24,7 @@
     <!-- Configuração do canal de notificação -->
     <meta-data
         android:name="com.google.firebase.messaging.default_notification_channel_id"
-        android:value="product_channel_id" />
+        android:value="high_importance_channel" />
     
     <application
         android:label="Desperdício Zero"

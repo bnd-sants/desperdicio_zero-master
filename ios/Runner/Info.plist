@@ -66,5 +66,11 @@
 	<array>
 		<string>applinks:buuzrnplodxzzmcgstxw.supabase.co</string>
 	</array>
+	
+	<!-- Background modes para receber notificações em segundo plano -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
