@@ -31,7 +31,7 @@ class Food {
       'protein': protein,
       'carbs': carbs,
       'fat': fat,
-      'imageUrl': imageUrl,
+      'image_url': imageUrl,
       'barcode': barcode,
     };
   }
@@ -46,7 +46,7 @@ class Food {
       protein: (json['protein'] as num?)?.toDouble(),
       carbs: (json['carbs'] as num?)?.toDouble(),
       fat: (json['fat'] as num?)?.toDouble(),
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: json['image_url'] as String?,
       barcode: json['barcode'] as String?,
     );
   }

@@ -54,11 +54,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // Get the current user ID from the auth provider
   String get _userId {
     final authState = ref.watch(authNotifierProvider);
-    if (authState is! Authenticated) {
-      return '';
-    }
-    final currentUserId = authState.user.id;
-    return currentUserId;
+    return authState.maybeWhen(
+      authenticated: (profile) => profile.id,
+      orElse: () => '',
+    );
   }
 
   @override

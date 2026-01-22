@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:desperdicio_zero/core/providers/index.dart';
 import '../widgets/app_snackbar.dart';
 import 'package:desperdicio_zero/widgets/app_button.dart';
 import 'package:desperdicio_zero/widgets/app_text_field.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -37,25 +37,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await AuthService().signUpWithEmail(
+      final authNotifier = ref.read(authNotifierProvider.notifier);
+      await authNotifier.signUpWithEmail(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         name: _nameController.text.trim(),
       );
-      
-      if (mounted) {
-        if (response.session != null) {
+
+      if (!mounted) return;
+
+      final authState = ref.read(authNotifierProvider);
+      authState.maybeWhen(
+        authenticated: (_) {
           Navigator.of(context).pop();
-        } else {
-          if (mounted) {
-            AppSnackbar.showSuccess(
-              context: context,
-              message: 'Por favor, verifique seu e-mail para confirmar sua conta.',
-            );
-            Navigator.of(context).pop();
-          }
-        }
-      }
+        },
+        orElse: () {
+          AppSnackbar.showSuccess(
+            context: context,
+            message: 'Cadastro realizado! Verifique seu e-mail para confirmar a conta.',
+          );
+          Navigator.of(context).pop();
+        },
+      );
     } catch (e) {
       if (mounted) {
         AppSnackbar.showError(

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:desperdicio_zero/services/auth_service.dart';
+import 'package:desperdicio_zero/core/providers/index.dart';
 import 'package:desperdicio_zero/widgets/app_card.dart';
 import 'package:desperdicio_zero/widgets/app_text_field.dart';
 import 'package:desperdicio_zero/widgets/app_button.dart';
 import 'package:desperdicio_zero/widgets/app_snackbar.dart';
 import 'package:desperdicio_zero/theme/style_tokens.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _loading = false;
@@ -28,7 +28,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await AuthService.instance.resetPassword(_emailController.text.trim());
+      final authNotifier = ref.read(authNotifierProvider.notifier);
+      await authNotifier.resetPassword(_emailController.text.trim());
+
       if (!mounted) return;
       AppSnackbar.showSuccess(
         context: context,

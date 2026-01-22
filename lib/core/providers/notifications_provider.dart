@@ -1,3 +1,4 @@
+import 'dart:async';
 // lib/core/providers/notifications_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,17 +9,17 @@ import 'package:desperdicio_zero/services/notification_service.dart' as service;
 import 'package:desperdicio_zero/models/product_model.dart';
 
 final notificationsProvider =
-    StateNotifierProvider<NotificationsNotifier, List<AppNotification>>((ref) {
-      return NotificationsNotifier();
-    });
+    NotifierProvider<NotificationsNotifier, List<AppNotification>>(NotificationsNotifier.new);
 
-class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
+class NotificationsNotifier extends Notifier<List<AppNotification>> {
   static const String _storageKey = 'notifications';
-  final service.NotificationService _notificationService =
-      service.NotificationService.instance;
+  late final service.NotificationService _notificationService;
 
-  NotificationsNotifier() : super([]) {
-    loadNotifications();
+  @override
+  List<AppNotification> build() {
+    _notificationService = service.NotificationService.instance;
+    unawaited(loadNotifications());
+    return [];
   }
 
   // Carrega notificações do armazenamento local

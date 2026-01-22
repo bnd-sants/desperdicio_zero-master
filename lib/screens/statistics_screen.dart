@@ -501,7 +501,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await Future.wait([
+          await Future.wait<void>([
             ref.read(metricsProvider.notifier).refresh(),
             ref.read(productsProvider.notifier).refresh(),
           ]);

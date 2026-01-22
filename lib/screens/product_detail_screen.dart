@@ -60,10 +60,10 @@ class ProductDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
-    String? currentUserId;
-    if (authState is Authenticated) {
-      currentUserId = authState.user.id;
-    }
+    final currentUserId = authState.maybeWhen(
+      authenticated: (profile) => profile.id,
+      orElse: () => null,
+    );
     final canEdit = currentUserId != null && currentUserId == product.userId;
     
     return Scaffold(

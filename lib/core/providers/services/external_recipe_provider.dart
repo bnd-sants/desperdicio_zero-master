@@ -50,7 +50,7 @@ final recipeDetailsProvider = FutureProvider.family.autoDispose<Recipe, String>(
 });
 
 // Extensão para adicionar funcionalidade de cache
-extension CacheForExtension on Ref<Object?> {
+extension CacheForExtension on Ref {
   void cacheFor(Duration duration) {
     final link = keepAlive();
     final timer = Timer(duration, () {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
@@ -66,11 +67,13 @@ class NotificationPreferences {
 }
 
 class NotificationPreferencesNotifier
-    extends StateNotifier<NotificationPreferences> {
+    extends Notifier<NotificationPreferences> {
   static const _prefsKey = 'notification_preferences';
 
-  NotificationPreferencesNotifier() : super(const NotificationPreferences()) {
-    load();
+  @override
+  NotificationPreferences build() {
+    unawaited(load());
+    return const NotificationPreferences();
   }
 
   Future<void> load() async {
@@ -187,7 +190,6 @@ class NotificationPreferencesNotifier
 }
 
 final notificationPreferencesProvider =
-    StateNotifierProvider<
-      NotificationPreferencesNotifier,
-      NotificationPreferences
-    >((ref) => NotificationPreferencesNotifier());
+    NotifierProvider<NotificationPreferencesNotifier, NotificationPreferences>(
+      NotificationPreferencesNotifier.new,
+    );

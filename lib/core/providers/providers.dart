@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:desperdicio_zero/services/recipe_service.dart';
+import 'package:desperdicio_zero/core/providers/auth/auth_provider.dart'
+    as feature_auth_provider;
 
 /// Provider for the Supabase client
 final supabaseProvider = Provider<SupabaseClient>((ref) {
@@ -11,108 +13,10 @@ final supabaseProvider = Provider<SupabaseClient>((ref) {
 });
 
 /// Provider for the current user
-final currentUserProvider = Provider<User?>((ref) {
-  final supabase = ref.watch(supabaseProvider);
-  return supabase.auth.currentUser;
-});
+final currentUserProvider = feature_auth_provider.currentUserProvider;
 
-/// Provider for the current user's session
-final sessionProvider = StreamProvider<AuthState>((ref) async* {
-  final supabase = ref.watch(supabaseProvider);
-  
-  // Emit the current session if it exists
-  final currentSession = supabase.auth.currentSession;
-  if (currentSession != null) {
-    yield Authenticated(currentSession.user);
-  } else {
-    yield Unauthenticated();
-  }
-  
-  // Listen for auth state changes
-  final authChanges = supabase.auth.onAuthStateChange;
-  await for (final event in authChanges) {
-    if (event.session?.user != null) {
-      yield Authenticated(event.session!.user);
-    } else {
-      yield Unauthenticated();
-    }
-  }
-});
-
-/// Base auth state
-sealed class AuthState {}
-
-class Authenticated extends AuthState {
-  final User user;
-  final String? fullName;
-  
-  Authenticated(this.user, {this.fullName});
-  
-  String get displayName => fullName ?? user.email?.split('@')[0] ?? 'Usuário';
-}
-
-class Unauthenticated extends AuthState {}
-
-class AuthError extends AuthState {
-  final String message;
-  
-  AuthError(this.message);
-}
-
-/// Provider for auth-related operations
-final authProvider = Provider<AuthProvider>((ref) {
-  final supabase = ref.watch(supabaseProvider);
-  return AuthProvider(supabase);
-});
-
-class AuthProvider {
-  final SupabaseClient _supabase;
-  
-  AuthProvider(this._supabase);
-  
-  Future<void> signInWithEmail(String email, String password) async {
-    try {
-      await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-    } catch (e) {
-      throw AuthError(e.toString());
-    }
-  }
-  
-  Future<void> signUpWithEmail({
-    required String email,
-    required String password,
-    required String name,
-  }) async {
-    try {
-      final response = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {'full_name': name},
-      );
-      
-      if (response.user == null) {
-        throw AuthError('Falha ao criar conta');
-      }
-    } catch (e) {
-      throw AuthError(e.toString());
-    }
-  }
-  
-  Future<void> signOut() async {
-    await _supabase.auth.signOut();
-  }
-  
-  Future<void> resetPassword(String email) async {
-    try {
-      await _supabase.auth.resetPasswordForEmail(email);
-    } catch (e) {
-      throw AuthError(e.toString());
-    }
-  }
-}
+/// Provider para o estado de autenticação utilizando a nova feature
+final authNotifierProvider = feature_auth_provider.authNotifierProvider;
 
 // Theme provider is now in theme/theme_provider.dart
 /// Provider for product-related operations

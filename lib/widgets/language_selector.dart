@@ -37,14 +37,14 @@ class LanguageSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final languageNotifier = ref.watch(languageProvider);
-    final currentLocale = languageNotifier.locale;
+    final currentLocale = ref.watch(languageProvider);
+    final languageNotifier = ref.read(languageProvider.notifier);
 
     return RadioGroup<Locale>(
       groupValue: currentLocale,
       onChanged: (Locale? value) {
         if (value != null) {
-          languageNotifier.setLanguage(value);
+          languageNotifier.setLanguage(value.languageCode);
         }
       },
       child: Column(

@@ -50,13 +50,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     
     if (!mounted) return;
     
-    if (authState is Authenticated) {
-      // Usuário autenticado, vai para a tela inicial
-      Navigator.of(context).pushReplacementNamed('/home');
-    } else {
-      // Usuário não autenticado, vai para o login
-      Navigator.of(context).pushReplacementNamed('/login');
-    }
+    authState.when(
+      authenticated: (_) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      },
+      unauthenticated: () {
+        Navigator.of(context).pushReplacementNamed('/login');
+      },
+      loading: () {
+        // Permanece aguardando; será tratado em nova verificação
+      },
+      initial: () {
+        // Estado inicial: manter na splash até próxima atualização
+      },
+      error: (_) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      },
+    );
   }
 
   @override

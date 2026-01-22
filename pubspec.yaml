@@ -6,31 +6,33 @@ publish_to: 'none'
 
 
 environment:
-  sdk: ^3.9.0
+  sdk: ^3.10.0
 
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.8
   
   # Gerenciamento de Estado
-  flutter_riverpod: ^2.4.9
-  riverpod_annotation: ^2.3.6
-  freezed_annotation: ^2.4.1
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
+  freezed_annotation: ^3.1.0
   
   # Supabase
-  supabase_flutter: ^2.6.0
-  gotrue: ^2.3.1
+  supabase_flutter: ^2.12.0
+  gotrue: ^2.18.0
   postgrest: ^2.3.1
   realtime_client: ^2.3.1
   storage_client: ^2.3.1
   functions_client: ^2.3.1
   
   # UI
-  google_fonts: ^6.3.2
-  font_awesome_flutter: ^10.1.0
+  google_fonts: ^7.0.2
+  font_awesome_flutter: ^10.12.0
   cached_network_image: ^3.3.1
-  fl_chart: ^0.66.0
+  fl_chart: ^1.1.1
 
   # Calendário
   table_calendar: ^3.0.9
@@ -41,19 +43,19 @@ dependencies:
   # Outras dependências
   intl: ^0.20.2
   flutter_local_notifications: ^19.4.2
-  timezone: ^0.10.0  # Updated to be compatible with flutter_local_notifications
-  permission_handler: ^12.0.1  # Para gerenciar permissões de câmera e notificação
-  firebase_core: ^3.8.0
-  firebase_messaging: ^15.1.2
-  firebase_analytics: ^11.2.0
-  flutter_secure_storage: ^10.0.0-beta.4  # Para armazenamento seguro de dados sensíveis
-  meta: ^1.8.0  # Para anotações de metadados
+  timezone: ^0.10.0
+  permission_handler: ^12.0.1
+  # Firebase
+  firebase_core: ^4.4.0
+  firebase_messaging: ^16.1.1
+  firebase_analytics: ^12.1.1
+  flutter_secure_storage: ^10.0.0  # Para armazenamento seguro de dados sensíveis
+  meta: ^1.17.0  # Para anotações de metadados
   json_annotation: ^4.8.1  # Para serialização
   equatable: ^2.0.5  # Para comparação de objetos
   logging: ^1.2.0  # For logging functionality
-  shared_preferences: ^2.5.3
-  # Para  logging estruturado
-  http: ^1.5.0  # Para fazer requisições HTTP
+  shared_preferences: ^2.5.4
+  http: ^1.6.0  # Para fazer requisições HTTP
   url_launcher: ^6.2.5  # Para abrir links de receitas
   shimmer: ^3.0.0  # Para efeito de carregamento
   flutter_dotenv: ^6.0.0  # Para gerenciar variáveis de ambiente
@@ -61,36 +63,36 @@ dependencies:
   hive_flutter: ^1.1.0
   path_provider: ^2.1.5
   page_transition: ^2.1.1  # Para animações de transição entre páginas
-  uuid: ^4.2.2  # Para geração de UUIDs
-  image_picker: ^1.0.7
+  uuid: ^4.5.2  # Para geração de UUIDs
+  image_picker: ^1.2.1
   # Gerenciamento de arquivos
   path: ^1.8.3
   mime: ^2.0.0
   lottie: ^3.3.2  # Para animações Lottie
   
   # Banco de dados local
-  sqflite: ^2.3.2
-  sqflite_common_ffi: ^2.3.2
+  sqflite: ^2.2.3+1
+  sqflite_common_ffi: ^2.3.6
   sqflite_common_ffi_web: ^1.0.1+1
   
   
   # Deep Linking
-  app_links: ^6.1.1 # Para lidar com deep links e URL schemes
+  app_links: ^6.4.1 # Para lidar com deep links e URL schemes
   
   # Para busca de produtos por código de barras
-  openfoodfacts: ^3.2.0
+  openfoodfacts: ^3.29.0
   
   # Para reconhecimento de alimentos por câmera
-  camera: ^0.11.2
-  google_mlkit_text_recognition: ^0.11.0
+  camera: ^0.11.3
+  google_mlkit_text_recognition: ^0.15.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: ^2.4.6
-  freezed: ^2.4.4
-  riverpod_generator: ^2.3.6
-  json_serializable: ^6.7.1
+  freezed: ^3.2.3
+  riverpod_generator: ^4.0.0+1
+  json_serializable: ^6.9.5
   flutter_lints: ^6.0.0
   
   # Utils

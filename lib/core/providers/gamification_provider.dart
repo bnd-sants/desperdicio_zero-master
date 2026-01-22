@@ -50,26 +50,33 @@ class GamificationState {
       );
 }
 
-class GamificationNotifier extends StateNotifier<GamificationState> {
-  GamificationNotifier()
-      : _supabase = Supabase.instance.client,
-        _eventService = GamificationEventService(),
-        super(GamificationState(
-          missions: [],
-          badges: [],
-          xpTotal: 0,
-          currentLevel: 1,
-          xpNextLevel: 200,
-          recentlyCompletedMissions: const [],
-          lastXpGained: 0,
-          lastReset: DateTime.now(),
-        )) {
-    _populateInitialMissionsAndBadges();
-    Future.microtask(_loadFromBackend);
-  }
+class GamificationNotifier extends Notifier<GamificationState> {
+  late final SupabaseClient _supabase;
+  late final GamificationEventService _eventService;
 
-  final SupabaseClient _supabase;
-  final GamificationEventService _eventService;
+  @override
+  GamificationState build() {
+    _supabase = Supabase.instance.client;
+    _eventService = GamificationEventService();
+    final initialState = GamificationState(
+      missions: [],
+      badges: [],
+      xpTotal: 0,
+      currentLevel: 1,
+      xpNextLevel: 200,
+      recentlyCompletedMissions: const [],
+      lastXpGained: 0,
+      lastReset: DateTime.now(),
+    );
+
+    Future.microtask(() async {
+      if (!ref.mounted) return;
+      _populateInitialMissionsAndBadges();
+      await _loadFromBackend();
+    });
+
+    return initialState;
+  }
 
   List<GamificationMission> _defaultMissions() => [
         const GamificationMission(
@@ -175,12 +182,14 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
         unlocked: false,
       ),
     ];
+  if (ref.mounted) {
     state = state.copyWith(
       missions: initialMissions,
       badges: state.badges.isEmpty ? initialBadges : state.badges,
       lastReset: DateTime.now(),
     );
   }
+}
 
   Future<void> _loadFromBackend() async {
     final user = _supabase.auth.currentUser;
@@ -612,4 +621,4 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
 }
 
 final gamificationProvider =
-    StateNotifierProvider<GamificationNotifier, GamificationState>((ref) => GamificationNotifier());
+    NotifierProvider<GamificationNotifier, GamificationState>(GamificationNotifier.new);

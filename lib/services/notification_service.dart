@@ -165,11 +165,20 @@ class NotificationService with ChangeNotifier {
             ],
           );
 
+      final WindowsInitializationSettings initializationSettingsWindows =
+          WindowsInitializationSettings(
+        appName: 'Desperdício Zero',
+        appUserModelId: 'com.example.desperdicio_zero',
+        guid: '9D36A9A3-95C8-4ABE-9A3E-7D63F2A0E3B1',
+      );
+
       // Initialize settings for both platforms
       final InitializationSettings initializationSettings =
           InitializationSettings(
             android: initializationSettingsAndroid,
             iOS: initializationSettingsIOS,
+            macOS: initializationSettingsIOS,
+            windows: initializationSettingsWindows,
           );
 
       // Initialize the plugin

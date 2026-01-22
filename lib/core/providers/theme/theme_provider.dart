@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -113,17 +114,17 @@ final darkTheme = ThemeData(
 );
 
 /// Provider para gerenciar o tema
-final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
-  return ThemeNotifier();
-});
+final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(ThemeNotifier.new);
 
-class ThemeNotifier extends StateNotifier<ThemeMode> {
+class ThemeNotifier extends Notifier<ThemeMode> {
   static const String _themeKey = 'isDarkMode';
-  
-  ThemeNotifier() : super(ThemeMode.system) {
-    _loadThemePreference();
+
+  @override
+  ThemeMode build() {
+    unawaited(_loadThemePreference());
+    return ThemeMode.system;
   }
-  
+
   Future<void> _loadThemePreference() async {
     try {
       final prefs = await SharedPreferences.getInstance();

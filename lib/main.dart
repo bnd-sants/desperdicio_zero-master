@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:desperdicio_zero/firebase_options.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:desperdicio_zero/utils/logger_util.dart' as logger;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -207,7 +208,12 @@ class _MyAppState extends ConsumerState<MyApp> {
     super.initState();
     _initDeepLinking();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeShowOnboarding();
+      // Aguarda o MaterialApp estar completamente montado
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _maybeShowOnboarding();
+        }
+      });
     });
   }
 
@@ -220,15 +226,20 @@ class _MyAppState extends ConsumerState<MyApp> {
   }
 
   Future<void> _maybeShowOnboarding() async {
+    // Verifica se o contexto ainda é válido antes de tentar mostrar o diálogo
+    if (!mounted || navigatorKey.currentContext == null) return;
+
     final storage = const SecureStorage();
     final prefsDone = await storage
         .getRefreshToken(); // proxy; absence implies first run
     if (prefsDone != null) return;
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
+    
+    try {
+      showDialog(
+        context: navigatorKey.currentContext!,
+        barrierDismissible: false,
+        builder: (context) {
         return AlertDialog(
           title: const Text('Bem-vindo'),
           content: const Text(
@@ -254,6 +265,10 @@ class _MyAppState extends ConsumerState<MyApp> {
         );
       },
     );
+    } catch (e) {
+      // Silently fail - não é crítico se o onboarding não aparecer
+      print('Erro ao mostrar onboarding: $e');
+    }
   }
 
   Future<void> _handleDeepLink(Uri uri) async {
@@ -354,7 +369,12 @@ class _MyAppState extends ConsumerState<MyApp> {
       title: 'Desperdício Zero',
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
-      locale: ref.watch(languageProvider).locale,
+      locale: ref.watch(languageProvider),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       supportedLocales: const [Locale('pt', 'BR'), Locale('en', 'US')],
       theme: themeMode == ThemeMode.dark
           ? ThemeData(
@@ -500,11 +520,10 @@ class _MyAppState extends ConsumerState<MyApp> {
               builder: (context) => Consumer(
                 builder: (context, ref, _) {
                   final authState = ref.watch(authNotifierProvider);
-                  if (authState is Authenticated) {
-                    return const HomeScreen();
-                  } else {
-                    return const LoginScreen();
-                  }
+                  return authState.maybeWhen(
+                    authenticated: (_) => const HomeScreen(),
+                    orElse: () => const LoginScreen(),
+                  );
                 },
               ),
             );

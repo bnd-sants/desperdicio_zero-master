@@ -159,7 +159,7 @@ class RecipeDetailScreen extends ConsumerWidget {
                               label: Text(t),
                               backgroundColor: Theme.of(
                                 context,
-                              ).colorScheme.secondary.withOpacity(0.15),
+                              ).colorScheme.secondary.withValues(alpha: 0.15),
                             ),
                           )
                           .toList(),

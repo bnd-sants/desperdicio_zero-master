@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/models/product_model.dart';
 import 'package:desperdicio_zero/services/product_service.dart';
@@ -22,7 +23,6 @@ class ProductState {
     this.error,
   });
 
-  /// Creates a copy of this state with the given fields replaced by the non-null values.
   ProductState copyWith({
     List<Product>? products,
     bool? isLoading,
@@ -35,7 +35,6 @@ class ProductState {
     );
   }
 
-  /// Returns a value based on the current state
   T when<T>({
     required T Function() loading,
     required T Function(String error) error,
@@ -50,7 +49,6 @@ class ProductState {
     }
   }
 
-  /// Returns a value based on the current state, with an orElse fallback
   T maybeWhen<T>({
     T Function()? loading,
     T Function(String error)? error,
@@ -70,44 +68,82 @@ class ProductState {
 }
 
 /// Notifier para gerenciar o estado dos produtos
-class ProductNotifier extends StateNotifier<ProductState> {
-  final ProductService _productService;
-  final Ref _ref;
-  
-  ProductNotifier(this._productService, this._ref) 
-    : super(const ProductState()) {
-    _loadProducts();
-  }
-
-  bool _isDisposed = false;
+class ProductNotifier extends Notifier<ProductState> {
+  late final ProductService _productService;
   
   @override
-  void dispose() {
-    _isDisposed = true;
-    super.dispose();
+  ProductState build() {
+    _productService = ref.watch(productServiceProvider);
+    
+    // CORREÇÃO: Em vez de chamar _loadProducts direto, usamos listen e microtask
+    
+    // 1. Ouve mudanças na autenticação. Se o usuário logar/deslogar, reagimos aqui.
+    ref.listen(authNotifierProvider, (previous, next) {
+      next.maybeWhen(
+        authenticated: (user) {
+          // Usuário autenticado? Carrega os produtos.
+          _loadProducts();
+        },
+        orElse: () {
+          // Se não estiver autenticado, limpa o estado para evitar vazamento de dados
+          state = const ProductState();
+        },
+      );
+    });
+
+    // 2. Carregamento Inicial Seguro
+    // Usamos Future.microtask para agendar a execução para APÓS o término do build atual.
+    // Isso evita o erro de "Circular Dependency" ou "Uninitialized Provider".
+    Future.microtask(() {
+      final authState = ref.read(authNotifierProvider);
+      authState.maybeWhen(
+        authenticated: (_) => _loadProducts(),
+        orElse: () {},
+      );
+    });
+
+    // Retorna o estado inicial vazio enquanto o microtask não roda
+    return const ProductState();
   }
 
   /// Carrega os produtos do usuário autenticado
   Future<void> _loadProducts() async {
-    if (_isDisposed) return;
+    // Verificação de segurança: O provider ainda está ativo?
+    if (!ref.mounted) return;
+
+    // Evita recarregar se já estiver carregando (opcional, mas recomendado)
+    if (state.isLoading) return;
 
     try {
       state = state.copyWith(isLoading: true, error: null);
 
-      final authState = _ref.read(authNotifierProvider);
-      if (authState is! Authenticated) {
-        logWarning('Provider: Usuário não autenticado');
-        state = state.copyWith(
-          isLoading: false,
-          error: 'Usuário não autenticado',
-        );
+      // Aqui usamos ref.read porque estamos dentro de uma função assíncrona, não no build
+      final authState = ref.read(authNotifierProvider);
+      
+      final user = authState.when(
+        authenticated: (profile) => profile,
+        unauthenticated: () => null,
+        loading: () => null,
+        error: (_) => null,
+        initial: () => null,
+      );
+
+      if (user == null) {
+        logWarning('Provider: Usuário não autenticado, cancelando carga de produtos.');
+        if (ref.mounted) {
+           state = state.copyWith(
+            isLoading: false,
+            // Não definimos erro aqui para não mostrar mensagem vermelha na tela de login
+            error: null, 
+          );
+        }
         return;
       }
 
-      logInfo('Carregando produtos para usuário: ${authState.user.id}');
-      final products = await _productService.getUserProducts(authState.user.id);
+      logInfo('Carregando produtos para usuário: ${user.id}');
+      final products = await _productService.getUserProducts(user.id);
 
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
 
       logInfo('${products.length} produtos carregados');
       state = state.copyWith(
@@ -115,7 +151,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
         isLoading: false,
       );
     } catch (e) {
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
 
       logError('Erro ao carregar produtos', e);
       state = state.copyWith(
@@ -127,22 +163,27 @@ class ProductNotifier extends StateNotifier<ProductState> {
 
   /// Adiciona um novo produto
   Future<void> addProduct(Product product) async {
-    if (_isDisposed) return;
+    if (!ref.mounted) return;
 
     try {
       state = state.copyWith(isLoading: true, error: null);
 
-      final authState = _ref.read(authNotifierProvider);
-      if (authState is! Authenticated) {
+      final authState = ref.read(authNotifierProvider);
+      final user = authState.maybeWhen(
+        authenticated: (profile) => profile,
+        orElse: () => null,
+      );
+
+      if (user == null) {
         throw Exception('Usuário não autenticado');
       }
 
       logInfo('Adicionando produto...');
       final newProduct = await _productService.addProduct(
-        product.copyWith(userId: authState.user.id),
+        product.copyWith(userId: user.id),
       );
 
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
 
       logInfo('Produto adicionado com sucesso');
       state = state.copyWith(
@@ -152,7 +193,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
 
       logDebug('Total de produtos agora: ${state.products.length}');
     } catch (e) {
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
 
       logError('Erro ao adicionar produto', e);
       state = state.copyWith(
@@ -165,14 +206,14 @@ class ProductNotifier extends StateNotifier<ProductState> {
 
   /// Atualiza um produto existente
   Future<void> updateProduct(Product product) async {
-    if (_isDisposed) return;
+    if (!ref.mounted) return;
     
     try {
       state = state.copyWith(isLoading: true, error: null);
       
       await _productService.updateProduct(product);
       
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
       
       state = state.copyWith(
         products: state.products
@@ -181,7 +222,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
         isLoading: false,
       );
     } catch (e) {
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
       
       log('Erro ao atualizar produto: $e');
       state = state.copyWith(
@@ -194,17 +235,22 @@ class ProductNotifier extends StateNotifier<ProductState> {
 
   /// Marca um produto como consumido
   Future<void> markAsConsumed(String productId) async {
-    if (_isDisposed) return;
+    if (!ref.mounted) return;
     
     try {
       state = state.copyWith(isLoading: true, error: null);
       
-      final product = state.products.firstWhere((p) => p.id == productId);
+      // Encontra o produto atual
+      final product = state.products.firstWhere(
+        (p) => p.id == productId,
+        orElse: () => throw Exception("Produto não encontrado na lista"),
+      );
+
       final consumedProduct = product.copyWith(isConsumed: true);
       
       await _productService.updateProduct(consumedProduct);
       
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
       
       state = state.copyWith(
         products: state.products
@@ -213,7 +259,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
         isLoading: false,
       );
     } catch (e) {
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
       
       log('Erro ao marcar produto como consumido: $e');
       state = state.copyWith(
@@ -226,21 +272,21 @@ class ProductNotifier extends StateNotifier<ProductState> {
 
   /// Remove um produto
   Future<void> removeProduct(String productId) async {
-    if (_isDisposed) return;
+    if (!ref.mounted) return;
     
     try {
       state = state.copyWith(isLoading: true, error: null);
       
       await _productService.deleteProduct(productId);
       
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
       
       state = state.copyWith(
         products: state.products.where((p) => p.id != productId).toList(),
         isLoading: false,
       );
     } catch (e) {
-      if (_isDisposed) return;
+      if (!ref.mounted) return;
       
       log('Erro ao remover produto: $e');
       state = state.copyWith(
@@ -256,10 +302,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
 }
 
 /// Provider para o ProductNotifier
-final productsProvider = StateNotifierProvider<ProductNotifier, ProductState>((ref) {
-  final productService = ref.watch(productServiceProvider);
-  return ProductNotifier(productService, ref);
-});
+final productsProvider = NotifierProvider<ProductNotifier, ProductState>(ProductNotifier.new);
 
 /// Provider para a lista de produtos filtrada por tipo
 final productsByCategoryProvider = Provider.family<List<Product>, String>((ref, type) {

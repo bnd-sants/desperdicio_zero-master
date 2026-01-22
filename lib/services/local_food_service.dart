@@ -1,11 +1,14 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:path/path.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:desperdicio_zero/models/recipe_model.dart';
 import 'package:desperdicio_zero/models/food_model.dart';
 
 class LocalFoodService {
   static final LocalFoodService _instance = LocalFoodService._internal();
   static Database? _database;
+  static bool _factoryInitialized = false;
 
   factory LocalFoodService() => _instance;
 
@@ -17,8 +20,27 @@ class LocalFoodService {
     return _database!;
   }
 
+  void _ensureDatabaseFactory() {
+    if (_factoryInitialized) {
+      return;
+    }
+
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    } else if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
+    _factoryInitialized = true;
+  }
+
   Future<Database> _initDatabase() async {
-    final path = join(await getDatabasesPath(), 'food_database.db');
+    _ensureDatabaseFactory();
+    // CORREÇÃO 1: Mudei o nome para forçar a criação de um banco novo e limpo
+    final path = join(await getDatabasesPath(), 'food_database_v2.db');
     return await openDatabase(
       path,
       version: 1,
@@ -43,9 +65,11 @@ class LocalFoodService {
     ''');
 
     // Tabela de receitas
+    // CORREÇÃO 2: Adicionei a coluna user_id
     await db.execute('''
       CREATE TABLE recipes(
         id TEXT PRIMARY KEY,
+        user_id TEXT, 
         title TEXT NOT NULL,
         description TEXT,
         instructions TEXT,
@@ -53,10 +77,11 @@ class LocalFoodService {
         prep_time INTEGER,
         cook_time INTEGER,
         servings INTEGER,
-        created_at INTEGER,
-        updated_at INTEGER
+        created_at TEXT, 
+        updated_at TEXT
       )
     ''');
+    // Nota: Mudei created_at/updated_at para TEXT pois o erro mostrava strings ISO8601
 
     // Tabela de ingredientes das receitas
     await db.execute('''
@@ -93,8 +118,7 @@ class LocalFoodService {
     
     // Busca receitas que contenham pelo menos um dos ingredientes fornecidos
     final List<Map<String, dynamic>> recipes = await db.rawQuery('''
-      SELECT DISTINCT r.* 
-      FROM recipes r
+      SELECT DISTINCT r.* FROM recipes r
       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
       JOIN foods f ON ri.food_id = f.id
       WHERE f.name IN ($placeholders)
@@ -129,10 +153,15 @@ class LocalFoodService {
     final batch = db.batch();
     
     for (var recipe in recipes) {
-      batch.insert('recipes', recipe.toJson(), 
+      // CORREÇÃO 3: Remover a lista 'products' do JSON antes de salvar na tabela 'recipes'
+      // O sqflite tenta salvar tudo que vem no toJson(), e a lista 'products' causaria erro
+      final recipeMap = recipe.toJson();
+      recipeMap.remove('products'); 
+
+      batch.insert('recipes', recipeMap, 
           conflictAlgorithm: ConflictAlgorithm.replace);
       
-      // Adiciona os ingredientes da receita
+      // Adiciona os ingredientes da receita na tabela relacional
       for (var product in recipe.products) {
         batch.insert('recipe_ingredients', {
           'id': '${recipe.id}_${product.id}',
@@ -149,13 +178,15 @@ class LocalFoodService {
   }
 
   Future<void> clearAll() async {
-    final dbPath = join(await getDatabasesPath(), 'food_database.db');
+    final dbPath = join(await getDatabasesPath(), 'food_database_v2.db');
 
     if (_database != null) {
       await _database!.close();
       _database = null;
     }
 
+    // Nota: deleteDatabase na web pode não funcionar como esperado dependendo da implementação,
+    // mas mudar o nome do arquivo no _initDatabase resolve o problema de cache.
     await deleteDatabase(dbPath);
   }
 }

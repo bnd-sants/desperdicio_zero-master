@@ -37,8 +37,9 @@ class ShoppingListItem {
       );
 }
 
-class ShoppingListNotifier extends StateNotifier<List<ShoppingListItem>> {
-  ShoppingListNotifier() : super([]);
+class ShoppingListNotifier extends Notifier<List<ShoppingListItem>> {
+  @override
+  List<ShoppingListItem> build() => [];
 
   void addItem(ShoppingListItem item) {
     state = [...state, item];
@@ -76,6 +77,6 @@ class ShoppingListNotifier extends StateNotifier<List<ShoppingListItem>> {
   }
 }
 
-final shoppingListProvider = StateNotifierProvider<ShoppingListNotifier, List<ShoppingListItem>>(
-  (ref) => ShoppingListNotifier(),
+final shoppingListProvider = NotifierProvider<ShoppingListNotifier, List<ShoppingListItem>>(
+  ShoppingListNotifier.new,
 );

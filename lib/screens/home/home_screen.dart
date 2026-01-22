@@ -26,42 +26,42 @@ class HomeScreen extends ConsumerStatefulWidget {
 String _resolveUserName(AuthState authState) {
   logger.logDebug('Estado de autenticação: $authState');
 
-  if (authState is Authenticated) {
-    logger.logDebug('Usuário autenticado: ${authState.user.id}');
-    final trimmedName = authState.fullName?.trim();
-    if (trimmedName != null && trimmedName.isNotEmpty) {
-      final firstName = trimmedName.split(' ').first;
-      logger.logDebug('Nome do usuário: $firstName');
-      return firstName;
-    }
+  return authState.when(
+    initial: () {
+      logger.logDebug('Estado inicial de autenticação');
+      return '...';
+    },
+    loading: () {
+      logger.logInfo('Carregando dados do usuário...');
+      return '...';
+    },
+    unauthenticated: () {
+      logger.logWarning('Usuário não autenticado');
+      return 'Usuário';
+    },
+    error: (message) {
+      logger.logError('Erro ao carregar usuário: $message');
+      return 'Usuário';
+    },
+    authenticated: (profile) {
+      logger.logDebug('Usuário autenticado: ${profile.id}');
+      final trimmedName = profile.fullName.trim();
+      if (trimmedName.isNotEmpty) {
+        final firstName = trimmedName.split(' ').first;
+        logger.logDebug('Nome do usuário: $firstName');
+        return firstName;
+      }
 
-    final emailPrefix = authState.user.email?.split('@').first;
-    if (emailPrefix != null && emailPrefix.isNotEmpty) {
-      logger.logDebug('Usando email como nome: $emailPrefix');
-      return emailPrefix;
-    }
+      final emailPrefix = profile.email.split('@').first;
+      if (emailPrefix.isNotEmpty) {
+        logger.logDebug('Usando email como nome: $emailPrefix');
+        return emailPrefix;
+      }
 
-    logger.logWarning('Nenhum nome ou email disponível');
-    return 'Usuário';
-  }
-
-  if (authState is AuthLoading) {
-    logger.logInfo('Carregando dados do usuário...');
-    return '...';
-  }
-
-  if (authState is AuthError) {
-    logger.logError('Erro ao carregar usuário: ${authState.message}');
-    return 'Usuário';
-  }
-
-  if (authState is Unauthenticated) {
-    logger.logWarning('Usuário não autenticado');
-    return 'Usuário';
-  }
-
-  logger.logDebug('Estado inicial de autenticação');
-  return '...';
+      logger.logWarning('Nenhum nome ou email disponível');
+      return 'Usuário';
+    },
+  );
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
@@ -69,62 +69,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final PageController _pageController = PageController();
   String _searchQuery = '';
   int _selectedIndex = 0;
+  ProviderSubscription<GamificationState>? _gamificationSubscription;
 
   @override
   void initState() {
     super.initState();
+    _gamificationSubscription = ref.listenManual<GamificationState>(
+      gamificationProvider,
+      (previous, next) => _handleGamificationEvents(next),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _listenGamificationEvents();
+      _handleGamificationEvents(ref.read(gamificationProvider));
     });
     _searchController.addListener(_onSearchChanged);
   }
 
-  void _listenGamificationEvents() {
-    ref.listen<GamificationState>(gamificationProvider, (previous, next) {
-      if (!mounted) return;
-      if (next.recentlyCompletedMissions.isEmpty || next.lastXpGained == 0) {
-        return;
-      }
+  void _handleGamificationEvents(GamificationState next) {
+    if (!mounted) return;
+    if (next.recentlyCompletedMissions.isEmpty || next.lastXpGained == 0) {
+      return;
+    }
 
-      final missionNames = next.recentlyCompletedMissions
-          .map((id) {
-            final mission = next.missions.firstWhere(
-              (mission) => mission.id == id,
-              orElse: () => const GamificationMission(
-                id: 'mission',
-                title: 'Missão',
-                description: '',
-                progress: 0,
-                goal: 0,
-                xpReward: 0,
-              ),
-            );
-            return mission.title;
-          })
-          .join(', ');
-
-      final message = next.recentlyCompletedMissions.length > 1
-          ? 'Missões $missionNames concluídas! +${next.lastXpGained} XP'
-          : 'Missão $missionNames concluída! +${next.lastXpGained} XP';
-
-      final messenger = ScaffoldMessenger.of(context);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(message),
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'Ver missões',
-              onPressed: () {
-                Navigator.of(context).pushNamed('/missions');
-              },
+    final missionNames = next.recentlyCompletedMissions
+        .map((id) {
+          final mission = next.missions.firstWhere(
+            (mission) => mission.id == id,
+            orElse: () => const GamificationMission(
+              id: 'mission',
+              title: 'Missão',
+              description: '',
+              progress: 0,
+              goal: 0,
+              xpReward: 0,
             ),
-          ),
-        );
+          );
+          return mission.title;
+        })
+        .join(', ');
 
-      ref.read(gamificationProvider.notifier).clearRecentMissionEvents();
-    });
+    final message = next.recentlyCompletedMissions.length > 1
+        ? 'Missões $missionNames concluídas! +${next.lastXpGained} XP'
+        : 'Missão $missionNames concluída! +${next.lastXpGained} XP';
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Ver missões',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/missions');
+            },
+          ),
+        ),
+      );
+
+    ref.read(gamificationProvider.notifier).clearRecentMissionEvents();
   }
 
   void _onSearchChanged() {
@@ -137,6 +140,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _gamificationSubscription?.close();
     _pageController.dispose();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/models/product_model.dart';
@@ -6,15 +7,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:desperdicio_zero/core/providers/gamification_provider.dart';
 import 'package:desperdicio_zero/core/providers/shopping_list_provider.dart';
 
-final productsProvider = StateNotifierProvider<ProductsNotifier, AsyncValue<List<Product>>>((ref) {
-  return ProductsNotifier(ref);
-});
+final productsProvider = NotifierProvider<ProductsNotifier, AsyncValue<List<Product>>>(ProductsNotifier.new);
 
-class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
-  final Ref ref;
-
-  ProductsNotifier(this.ref) : super(const AsyncValue.loading()) {
-    fetchProducts();
+class ProductsNotifier extends Notifier<AsyncValue<List<Product>>> {
+  @override
+  AsyncValue<List<Product>> build() {
+    unawaited(fetchProducts());
+    return const AsyncValue.loading();
   }
 
   Future<void> fetchProducts() async {
