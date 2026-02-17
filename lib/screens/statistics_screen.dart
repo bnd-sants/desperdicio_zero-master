@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -5,8 +7,11 @@ import 'package:intl/intl.dart';
 
 import 'package:desperdicio_zero/core/providers/products/product_provider.dart';
 import 'package:desperdicio_zero/core/providers/metrics/metrics_provider.dart';
+import 'package:desperdicio_zero/core/providers/auth/auth_provider.dart';
+import 'package:desperdicio_zero/models/metrics_timeseries.dart';
 import 'package:desperdicio_zero/models/product_model.dart';
 import 'package:desperdicio_zero/services/metrics_service.dart';
+import 'package:desperdicio_zero/services/telemetry_service.dart';
 
 const double _co2FactorPerKg = 2.5; // kg de CO₂ evitado por kg reaproveitado
 const double _waterFactorPerKg = 1600; // litros economizados por kg reaproveitado (FAO média)
@@ -846,6 +851,11 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
 
     children.addAll([
       const SizedBox(height: 24),
+      _buildAdvancedAnalyticsCard(),
+    ]);
+
+    children.addAll([
+      const SizedBox(height: 24),
       _buildTipsCard(
         context,
         currentCo2Value: _environmentalOverrides['co2'] ?? impactMetrics.co2SavedKg,
@@ -857,6 +867,146 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: children,
+    );
+  }
+
+  Widget _buildAdvancedAnalyticsCard() {
+    final authState = ref.watch(authNotifierProvider);
+    final user = authState.maybeWhen(
+      authenticated: (profile) => profile,
+      orElse: () => null,
+    );
+    if (user == null) {
+      return _buildMessageCard(
+        context,
+        title: 'Relatorios avancados',
+        message: 'Faca login para visualizar tendencia mensal e previsao.',
+        icon: Icons.auto_graph_outlined,
+      );
+    }
+
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait<dynamic>([
+        MetricsService().fetchMonthlyWasteSeries(user.id, months: 12),
+        MetricsService().forecastWaste30Days(user.id),
+      ]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+        if (snapshot.hasError || !snapshot.hasData) {
+          return _buildMessageCard(
+            context,
+            title: 'Relatorios avancados indisponiveis',
+            message: 'Nao foi possivel carregar os graficos mensais.',
+            icon: Icons.error_outline,
+          );
+        }
+
+        final monthlySeries = snapshot.data![0] as List<MonthlyWastePoint>;
+        final forecastSeries = snapshot.data![1] as List<ForecastPoint>;
+        unawaited(
+          TelemetryService.logEvent(
+            category: 'metrics',
+            message: 'monthly_dashboard_viewed',
+            data: {'points': monthlySeries.length},
+          ),
+        );
+
+        if (monthlySeries.isEmpty) {
+          return _buildMessageCard(
+            context,
+            title: 'Sem dados historicos',
+            message: 'Registre mais consumo/descarte para liberar o dashboard mensal.',
+            icon: Icons.timeline_outlined,
+          );
+        }
+
+        final maxY = monthlySeries
+                .map((m) => m.consumed > m.wasted ? m.consumed : m.wasted)
+                .fold<int>(1, (a, b) => a > b ? a : b)
+                .toDouble() +
+            1;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Desperdicio mensal e previsao',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 220,
+                  child: BarChart(
+                    BarChartData(
+                      maxY: maxY,
+                      barGroups: [
+                        for (var i = 0; i < monthlySeries.length; i++)
+                          BarChartGroupData(
+                            x: i,
+                            barRods: [
+                              BarChartRodData(
+                                toY: monthlySeries[i].consumed.toDouble(),
+                                color: Colors.green,
+                                width: 8,
+                              ),
+                              BarChartRodData(
+                                toY: monthlySeries[i].wasted.toDouble(),
+                                color: Colors.redAccent,
+                                width: 8,
+                              ),
+                            ],
+                          ),
+                      ],
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: true, reservedSize: 32),
+                        ),
+                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final idx = value.toInt();
+                              if (idx < 0 || idx >= monthlySeries.length) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(DateFormat('MM/yy').format(monthlySeries[idx].month)),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  forecastSeries.isEmpty
+                      ? 'Previsao indisponivel por falta de historico.'
+                      : 'Previsao 30 dias: ~${forecastSeries.first.predictedWaste.toStringAsFixed(2)} itens/dia desperdicados.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

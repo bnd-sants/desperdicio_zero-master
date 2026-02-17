@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application") version "8.6.0"
+    id("com.android.application") version "8.9.1"
     id("org.jetbrains.kotlin.android") version "2.1.0"
     // O plugin do Flutter precisa vir depois
     id("dev.flutter.flutter-gradle-plugin")

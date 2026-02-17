@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:desperdicio_zero/services/auth_service.dart';
+import 'package:desperdicio_zero/services/telemetry_service.dart';
+import 'package:desperdicio_zero/models/user_profile.dart';
 import 'package:desperdicio_zero/utils/logger_util.dart';
 import 'package:desperdicio_zero/widgets/app_text_field.dart';
 import 'package:desperdicio_zero/widgets/app_button.dart';
@@ -193,6 +196,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return 'Alertar ${prefs.diasAntes} dias antes às $time · Push $pushStatus · E-mails $emailStatus · $categoriesMuted';
   }
 
+  String _resolveDisplayName(User? user, UserProfile? profile) {
+    final candidates = <String?>[
+      profile?.fullName,
+      user?.userMetadata?['full_name'] as String?,
+      user?.email?.split('@').first,
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate != null && candidate.trim().isNotEmpty) {
+        return candidate.trim();
+      }
+    }
+
+    return 'Usuário';
+  }
+
+  String? _resolveAvatarUrl(User? user, UserProfile? profile) {
+    final candidates = <String?>[
+      profile?.avatarUrl,
+      user?.userMetadata?['avatar_url'] as String?,
+      _avatarUrl,
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate != null && candidate.isNotEmpty) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -206,19 +241,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _loadUserProfile() async {
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
+
     try {
       final authService = ref.read(AuthService.provider);
       final user = authService.currentUser;
+      final profile = await authService.getCurrentUserProfile();
 
-      if (user != null) {
-        setState(() {
-          _nameController.text = user.userMetadata?['full_name'] ?? '';
-          _avatarUrl = user.userMetadata?['avatar_url'];
-          _isLoading = false;
-        });
+      if (!mounted) return;
+      setState(() {
+        _nameController.text = _resolveDisplayName(user, profile);
+        _avatarUrl = _resolveAvatarUrl(user, profile);
+      });
+    } catch (e, stackTrace) {
+      LoggerUtil.logger.severe('Erro ao carregar perfil', e, stackTrace);
+      await TelemetryService.logEvent(
+        category: 'profile',
+        severity: 'error',
+        message: 'Falha ao carregar perfil',
+        data: {'error': e.toString()},
+      );
+      if (mounted) {
+        AppSnackbar.showError(
+          context: context,
+          message: 'Não foi possível carregar seu perfil. Tente novamente.',
+        );
       }
-    } catch (e) {
-      LoggerUtil.logger.severe('Erro ao carregar perfil', e);
+    } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -363,13 +414,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     try {
       final authService = ref.read(AuthService.provider);
-      await authService.updateProfile(
-        fullName: _nameController.text,
+      final trimmedName = _nameController.text.trim();
+      if (trimmedName.isEmpty) {
+        throw Exception('O nome não pode estar vazio.');
+      }
+
+      final updatedProfile = await authService.updateProfile(
+        fullName: trimmedName,
         avatarUrl: _avatarUrl,
       );
 
       if (!mounted) return;
-      setState(() => _isSaving = false);
+      setState(() {
+        _isSaving = false;
+        _nameController.text = updatedProfile.fullName;
+        _avatarUrl = _resolveAvatarUrl(authService.currentUser, updatedProfile) ?? _avatarUrl;
+      });
+
+      await TelemetryService.logEvent(
+        category: 'profile',
+        severity: 'info',
+        message: 'Perfil atualizado',
+        data: {
+          'userId': updatedProfile.id,
+          'hasAvatar': (_avatarUrl ?? '').isNotEmpty,
+        },
+      );
 
       if (mounted) {
         AppSnackbar.showSuccess(
@@ -377,8 +447,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           message: 'Perfil atualizado com sucesso!',
         );
       }
-    } catch (e) {
-      LoggerUtil.logger.severe('Erro ao atualizar perfil', e);
+    } catch (e, stackTrace) {
+      LoggerUtil.logger.severe('Erro ao atualizar perfil', e, stackTrace);
+      await TelemetryService.logEvent(
+        category: 'profile',
+        severity: 'error',
+        message: 'Falha ao atualizar perfil',
+        data: {'error': e.toString()},
+      );
 
       if (mounted) {
         setState(() => _isSaving = false);

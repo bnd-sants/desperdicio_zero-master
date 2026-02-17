@@ -1,5 +1,5 @@
 pluginManagement {
-    val flutterSdkPath = File("C:\\SDK e JDK\\flutter")
+    val flutterSdkPath = File("C:\\SDK_e_JDK\\flutter")
     settings.extra["gradle.user.home"] = file("${settings.settingsDir.parentFile}/.gradle")
     settings.extra["flutter.sdk"] = flutterSdkPath.absolutePath
 
@@ -18,8 +18,8 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             when (requested.id.name) {
-                "com.android.application" -> useModule("com.android.tools.build:gradle:8.6.0")
-                "com.android.library" -> useModule("com.android.tools.build:gradle:8.6.0")
+                "com.android.application" -> useModule("com.android.tools.build:gradle:8.9.1")
+                "com.android.library" -> useModule("com.android.tools.build:gradle:8.9.1")
                 "org.jetbrains.kotlin.android" -> useVersion("2.1.0")
                 "dev.flutter.flutter-gradle-plugin" -> useModule("dev.flutter:gradle:3.16.0")
             }
@@ -29,7 +29,7 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.6.0" apply false
+    id("com.android.application") version "8.9.1" apply false
     // START: FlutterFire Configuration
     id("com.google.gms.google-services") version("4.3.15") apply false
     // END: FlutterFire Configuration

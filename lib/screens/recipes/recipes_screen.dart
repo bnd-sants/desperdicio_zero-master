@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/models/recipe_model.dart' as model;
+import 'package:desperdicio_zero/models/ranked_recipe.dart';
 import 'package:desperdicio_zero/core/providers/providers.dart';
+import 'package:desperdicio_zero/core/providers/products/product_provider.dart';
+import 'package:desperdicio_zero/services/recipe_relevance_service.dart';
+import 'package:desperdicio_zero/services/telemetry_service.dart';
 import 'package:desperdicio_zero/widgets/app_card.dart';
 import 'package:desperdicio_zero/widgets/app_text_field.dart';
 import 'package:desperdicio_zero/widgets/app_button.dart';
@@ -39,6 +43,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     'Vegetariano',
     'Sobremesa',
   ];
+  bool _onlyAvailableIngredients = false;
+  bool _prioritizeExpiringSoon = true;
+  final RecipeRelevanceService _relevanceService = RecipeRelevanceService();
 
   @override
   void initState() {
@@ -236,6 +243,17 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
   }
 
+  List<RankedRecipe> _rankRecipes(List<Recipe> recipes) {
+    final productsState = ref.watch(productsProvider);
+    final products = productsState.products;
+    return _relevanceService.rankRecipes(
+      recipes: recipes,
+      products: products,
+      prioritizeExpiringSoon: _prioritizeExpiringSoon,
+      onlyAvailable: _onlyAvailableIngredients,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -369,6 +387,43 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                             .toList(),
                       ),
                     ],
+                    const SizedBox(height: StyleTokens.spacingM),
+                    Wrap(
+                      spacing: StyleTokens.spacingS,
+                      runSpacing: StyleTokens.spacingS,
+                      children: [
+                        FilterChip(
+                          label: const Text('Somente ingredientes disponiveis'),
+                          selected: _onlyAvailableIngredients,
+                          onSelected: (value) async {
+                            setState(() => _onlyAvailableIngredients = value);
+                            await TelemetryService.logEvent(
+                              category: 'recipes',
+                              message: 'recipe_rank_applied',
+                              data: {
+                                'onlyAvailable': _onlyAvailableIngredients,
+                                'prioritizeExpiring': _prioritizeExpiringSoon,
+                              },
+                            );
+                          },
+                        ),
+                        FilterChip(
+                          label: const Text('Priorizar vencendo em ate 3 dias'),
+                          selected: _prioritizeExpiringSoon,
+                          onSelected: (value) async {
+                            setState(() => _prioritizeExpiringSoon = value);
+                            await TelemetryService.logEvent(
+                              category: 'recipes',
+                              message: 'recipe_rank_applied',
+                              data: {
+                                'onlyAvailable': _onlyAvailableIngredients,
+                                'prioritizeExpiring': _prioritizeExpiringSoon,
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -412,8 +467,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   final filtered = recipes
                       .where((r) => _matchesSearch(r))
                       .toList();
+                  final ranked = _rankRecipes(filtered);
 
-                  if (filtered.isEmpty) {
+                  if (ranked.isEmpty) {
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.all(StyleTokens.spacingL),
@@ -450,9 +506,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                       bottom: StyleTokens.spacingXL,
                     ),
                     physics: const BouncingScrollPhysics(),
-                    itemCount: filtered.length,
+                    itemCount: ranked.length,
                     itemBuilder: (context, i) =>
-                        _buildRecipeCard(context, filtered[i]),
+                        _buildRecipeCard(context, ranked[i]),
                   );
                 },
               ),
@@ -463,7 +519,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
   }
 
-  Widget _buildRecipeCard(BuildContext context, Recipe recipe) {
+  Widget _buildRecipeCard(BuildContext context, RankedRecipe rankedRecipe) {
+    final recipe = rankedRecipe.recipe;
     final theme = Theme.of(context);
 
     return AppCard(
@@ -521,6 +578,22 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                     spacing: StyleTokens.spacingS,
                     runSpacing: StyleTokens.spacingS,
                     children: [
+                      Chip(
+                        label: Text(
+                          'Usa ${(rankedRecipe.availableIngredientRatio * 100).round()}% da despensa',
+                        ),
+                        backgroundColor: theme.colorScheme.tertiary.withValues(
+                          alpha: 0.12,
+                        ),
+                      ),
+                      Chip(
+                        label: Text(
+                          'Aproveita ${(rankedRecipe.expiringSoonCoverage * 100).round()}% criticos',
+                        ),
+                        backgroundColor: theme.colorScheme.error.withValues(
+                          alpha: 0.12,
+                        ),
+                      ),
                       if (recipe.prepTime != null)
                         Chip(
                           label: Text('${recipe.prepTime} min'),

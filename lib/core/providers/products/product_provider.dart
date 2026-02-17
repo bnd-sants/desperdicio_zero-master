@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/models/product_model.dart';
 import 'package:desperdicio_zero/services/product_service.dart';
+import 'package:desperdicio_zero/services/telemetry_service.dart';
 import 'package:desperdicio_zero/utils/logger_util.dart' show logInfo, logWarning, logError, logDebug;
 import 'package:desperdicio_zero/core/providers/auth/auth_provider.dart';
 
@@ -142,6 +143,16 @@ class ProductNotifier extends Notifier<ProductState> {
 
       logInfo('Carregando produtos para usuário: ${user.id}');
       final products = await _productService.getUserProducts(user.id);
+      if (_productService.lastLoadFromOffline) {
+        unawaited(
+          TelemetryService.logEvent(
+            category: 'products',
+            severity: 'warning',
+            message: 'offline_products_loaded',
+            data: {'userId': user.id, 'count': products.length},
+          ),
+        );
+      }
 
       if (!ref.mounted) return;
 

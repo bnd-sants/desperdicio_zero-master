@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -15,12 +17,122 @@ import 'package:desperdicio_zero/widgets/fridge_heatmap.dart';
 import 'package:desperdicio_zero/widgets/gamification_widgets.dart';
 import 'package:desperdicio_zero/core/providers/gamification_provider.dart';
 import 'package:desperdicio_zero/models/gamification_models.dart';
+import 'package:desperdicio_zero/widgets/skeletons/home_skeleton.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _XpCelebrationBanner extends StatefulWidget {
+  const _XpCelebrationBanner({required this.message, required this.xp});
+
+  final String message;
+  final int xp;
+
+  @override
+  State<_XpCelebrationBanner> createState() => _XpCelebrationBannerState();
+}
+
+class _XpCelebrationBannerState extends State<_XpCelebrationBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _offset;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..forward();
+    _offset = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    ));
+    _opacity = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeIn,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Positioned(
+      top: 60,
+      left: 0,
+      right: 0,
+      child: SlideTransition(
+        position: _offset,
+        child: FadeTransition(
+          opacity: _opacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(20),
+              color: theme.colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor:
+                          theme.colorScheme.primary.withValues(alpha: 0.1),
+                      child: Icon(
+                        Icons.bolt,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.message,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '+${widget.xp} XP',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {},
+                      child: const Text('Continuar'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 String _resolveUserName(AuthState authState) {
@@ -70,6 +182,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _searchQuery = '';
   int _selectedIndex = 0;
   ProviderSubscription<GamificationState>? _gamificationSubscription;
+  OverlayEntry? _xpOverlay;
+  DateTime? _lastSmartSuggestionRun;
 
   @override
   void initState() {
@@ -127,7 +241,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
 
+    _showXpCelebration(message, next.lastXpGained);
     ref.read(gamificationProvider.notifier).clearRecentMissionEvents();
+  }
+
+  void _showXpCelebration(String message, int xpGained) {
+    final overlay = Overlay.of(context);
+    _xpOverlay?.remove();
+
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _XpCelebrationBanner(
+        message: message,
+        xp: xpGained,
+      ),
+    );
+
+    overlay.insert(entry);
+    _xpOverlay = entry;
+    Future.delayed(const Duration(seconds: 3), () {
+      if (_xpOverlay == entry) {
+        entry.remove();
+        _xpOverlay = null;
+      }
+    });
   }
 
   void _onSearchChanged() {
@@ -242,89 +379,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return _buildEmptyState(colorScheme ?? Theme.of(context).colorScheme);
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(vertical: StyleTokens.spacingS),
-      shrinkWrap: embedded,
-      physics: embedded ? const NeverScrollableScrollPhysics() : null,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.8,
-        crossAxisSpacing: StyleTokens.spacingL,
-        mainAxisSpacing: StyleTokens.spacingL,
-      ),
-      itemCount: filteredProducts.length,
-      itemBuilder: (context, index) {
-        final product = filteredProducts[index];
-        return GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(context, '/product-detail', arguments: product);
-          },
-          onLongPress: () {
-            _showProductOptions(product);
-          },
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(12),
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.shopping_basket,
-                        size: 40,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth <= 0
+            ? MediaQuery.sizeOf(context).width
+            : constraints.maxWidth;
+        final crossAxisCount = width >= 1200
+            ? 4
+            : width >= 900
+                ? 3
+                : 2;
+        final aspectRatio = width >= 900 ? 0.9 : 0.8;
+
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(vertical: StyleTokens.spacingS),
+          shrinkWrap: embedded,
+          physics: embedded ? const NeverScrollableScrollPhysics() : null,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: aspectRatio,
+            crossAxisSpacing: StyleTokens.spacingL,
+            mainAxisSpacing: StyleTokens.spacingL,
+          ),
+          itemCount: filteredProducts.length,
+          itemBuilder: (context, index) {
+            final product = filteredProducts[index];
+            return GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, '/product-detail', arguments: product);
+              },
+              onLongPress: () {
+                _showProductOptions(product);
+              },
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Quantidade: ${product.quantity} ${product.unit}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      if (product.expirationDate != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Validade: ${DateFormat('dd/MM/yyyy').format(product.expirationDate!)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: product.isExpired ? Colors.red : Colors.grey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12),
                           ),
                         ),
-                      ],
-                    ],
-                  ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.shopping_basket,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Quantidade: ${product.quantity} ${product.unit}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          if (product.expirationDate != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Validade: ${DateFormat('dd/MM/yyyy').format(product.expirationDate!)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: product.isExpired ? Colors.red : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -408,9 +559,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildHomeContent() {
     final productState = ref.watch(productsProvider);
     return productState.when(
-      data: (products) => _buildHubContent(products),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      data: (products) {
+        _triggerSmartSuggestions(products);
+        return _buildHubContent(products);
+      },
+      loading: () => const HomeSkeleton(),
       error: (errorMessage) => Center(child: Text('Erro: $errorMessage')),
+    );
+  }
+
+  void _triggerSmartSuggestions(List<Product> products) {
+    final now = DateTime.now();
+    if (_lastSmartSuggestionRun != null &&
+        now.difference(_lastSmartSuggestionRun!).inHours < 6) {
+      return;
+    }
+    _lastSmartSuggestionRun = now;
+    unawaited(
+      ref.read(notificationsProvider.notifier).generateSmartSuggestions(
+            ref,
+            products,
+          ),
     );
   }
 
@@ -596,40 +765,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     ];
 
-    return Column(
-      children: [
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final crossAxisCount = width >= 900
+            ? 4
+            : width >= 600
+                ? 2
+                : 1;
+        final spacing = StyleTokens.spacingS;
+        final itemWidth =
+            (width - ((crossAxisCount - 1) * spacing)) / crossAxisCount;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
           children: actions
-              .take(2)
               .map(
-                (action) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: StyleTokens.spacingS,
-                    ),
-                    child: _QuickActionCard(data: action),
-                  ),
+                (action) => SizedBox(
+                  width: itemWidth,
+                  child: _QuickActionCard(data: action),
                 ),
               )
               .toList(),
-        ),
-        const SizedBox(height: StyleTokens.spacingS),
-        Row(
-          children: actions
-              .skip(2)
-              .map(
-                (action) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: StyleTokens.spacingS,
-                    ),
-                    child: _QuickActionCard(data: action),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-      ],
+        );
+      },
     );
   }
 

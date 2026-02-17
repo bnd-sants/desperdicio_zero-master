@@ -5,8 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:desperdicio_zero/models/notification_model.dart';
+import 'package:desperdicio_zero/models/recipe_model.dart';
 import 'package:desperdicio_zero/services/notification_service.dart' as service;
+import 'package:desperdicio_zero/services/smart_notification_service.dart';
+import 'package:desperdicio_zero/services/telemetry_service.dart';
 import 'package:desperdicio_zero/models/product_model.dart';
+import 'package:desperdicio_zero/core/providers/providers.dart';
 
 final notificationsProvider =
     NotifierProvider<NotificationsNotifier, List<AppNotification>>(NotificationsNotifier.new);
@@ -14,6 +18,8 @@ final notificationsProvider =
 class NotificationsNotifier extends Notifier<List<AppNotification>> {
   static const String _storageKey = 'notifications';
   late final service.NotificationService _notificationService;
+  final SmartNotificationService _smartNotificationService =
+      SmartNotificationService();
 
   @override
   List<AppNotification> build() {
@@ -119,6 +125,42 @@ class NotificationsNotifier extends Notifier<List<AppNotification>> {
     await _notificationService.cancelProductNotifications(productId);
     state = state.where((n) => n.payload?['productId'] != productId).toList();
     await _saveNotifications();
+  }
+
+  Future<void> generateSmartSuggestions(
+    WidgetRef ref,
+    List<Product> products, {
+    List<Recipe>? recipes,
+  }) async {
+    try {
+      final recipeService = ref.read(recipeServiceProvider);
+      final sourceRecipes = recipes ?? await recipeService.getRecipes();
+      final suggestions = await _smartNotificationService.generateSuggestions(
+        products,
+        sourceRecipes,
+      );
+
+      for (final suggestion in suggestions) {
+        await _notificationService.scheduleSmartSuggestion(suggestion);
+        await addNotification(
+          AppNotification(
+            id: suggestion.key,
+            title: suggestion.title,
+            body: suggestion.body,
+            type: NotificationType.tip,
+            payload: suggestion.payload,
+            createdAt: suggestion.scheduledAt,
+          ),
+        );
+        await TelemetryService.logEvent(
+          category: 'notifications',
+          message: 'smart_tip_scheduled',
+          data: {'key': suggestion.key},
+        );
+      }
+    } catch (e) {
+      debugPrint('Erro ao gerar alertas inteligentes: $e');
+    }
   }
 
   // Atualiza o status de seleção de uma notificação

@@ -9,6 +9,24 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+
+# Configuração do Dart Code Metrics
+analyzer:
+  plugins:
+    - dart_code_metrics
+
+# Configuração do Dart Code Metrics
+dart_code_metrics:
+  metrics:
+    cyclomatic-complexity: 20  # Máximo de caminhos lógicos (if/else) num método
+    number-of-parameters: 4    # Máximo de parâmetros numa função
+    source-lines-of-code: 50   # Máximo de linhas por método
+  rules:
+    - avoid-global-state
+    - avoid-non-null-assertion # Evita o uso do perigoso "!"
+    - no-boolean-literal-compare # Evita "if (x == true)"
+    - prefer-extracting-callbacks # Sugere tirar lógicas de dentro do botão
+# Configuração do Flutter Lints
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

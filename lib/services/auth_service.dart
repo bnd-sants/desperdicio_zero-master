@@ -367,6 +367,7 @@ class AuthService implements IAuthService {
 
       final updates = <String, dynamic>{
         'id': user.id,
+        'email': user.email ?? '',
         'updated_at': DateTime.now().toIso8601String(),
       };
 

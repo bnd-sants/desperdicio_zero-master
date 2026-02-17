@@ -9,7 +9,7 @@ buildscript {
     }
     
     dependencies {
-        classpath("com.android.tools.build:gradle:8.6.0")
+        classpath("com.android.tools.build:gradle:8.9.1")
         classpath(kotlin("gradle-plugin", version = "2.1.0"))
         classpath("com.google.gms:google-services:4.4.2")
     }

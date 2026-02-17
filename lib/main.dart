@@ -15,6 +15,8 @@ import 'dart:async';
 // Services
 import 'package:desperdicio_zero/services/deep_link_service.dart';
 import 'package:desperdicio_zero/services/notification_service.dart';
+import 'package:desperdicio_zero/services/error_monitoring_service.dart';
+import 'package:desperdicio_zero/services/telemetry_service.dart';
 import 'package:desperdicio_zero/services/push_notification_service.dart';
 import 'package:desperdicio_zero/services/database_init_service.dart';
 
@@ -57,9 +59,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 // Função principal assíncrona para inicializar recursos
 Future<void> main() async {
-  // Garante que o binding do Flutter está inicializado
-  WidgetsFlutterBinding.ensureInitialized();
-  logger.LoggerUtil.initialize();
+  await ErrorMonitoringService.runGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    logger.LoggerUtil.initialize();
+    ErrorMonitoringService.initialize();
 
   if (!kIsWeb) {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -179,10 +182,21 @@ Future<void> main() async {
     logger.logDebug('Modo debug ativado');
   }
 
-  runApp(const ProviderScope(child: MyApp()));
+    await TelemetryService.logEvent(
+      category: 'app',
+      severity: 'info',
+      message: 'Bootstrap concluído',
+      data: {
+        'debug': kDebugMode,
+        'web': kIsWeb,
+      },
+    );
 
-  // Cancela a inscrição quando o app for encerrado
-  await authStateSubscription.cancel();
+    runApp(const ProviderScope(child: MyApp()));
+
+    // Cancela a inscrição quando o app for encerrado
+    await authStateSubscription.cancel();
+  });
 }
 
 class MyApp extends ConsumerStatefulWidget {

@@ -16,6 +16,9 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:desperdicio_zero/services/ocr_service.dart';
 import 'package:desperdicio_zero/core/providers/gamification_provider.dart';
+import 'package:desperdicio_zero/services/barcode_lookup_service.dart';
+import 'package:desperdicio_zero/services/telemetry_service.dart';
+import 'package:desperdicio_zero/screens/barcode_scanner_screen.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final Function(Product)? onProductAdded;
@@ -35,6 +38,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _nameController = TextEditingController();
   final _typeController = TextEditingController();
   final _brandController = TextEditingController();
+  final _barcodeController = TextEditingController();
   final _quantityController = TextEditingController();
   final _storeController = TextEditingController();
   final _priceController = TextEditingController();
@@ -50,6 +54,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   DateTime _purchaseDate = DateTime.now();
   DateTime? _expirationDate;
   bool _isLoading = false;
+  final BarcodeLookupService _barcodeLookupService = BarcodeLookupService();
 
   // Get the current user ID from the auth provider
   String get _userId {
@@ -71,6 +76,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _nameController.dispose();
     _typeController.dispose();
     _brandController.dispose();
+    _barcodeController.dispose();
     _quantityController.dispose();
     _storeController.dispose();
     _priceController.dispose();
@@ -87,6 +93,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _nameController.text = product.name;
       _typeController.text = product.type ?? '';
       _brandController.text = product.brand ?? '';
+      _barcodeController.text = product.barcode ?? '';
       _quantityController.text = product.quantity.toString();
       _selectedUnit = product.unit;
       _purchaseDate = product.purchaseDate ?? DateTime.now();
@@ -172,6 +179,80 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
   }
 
+  Future<void> _scanBarcodeAndPrefill() async {
+    if (_isLoading) return;
+    final scannedBarcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+
+    if (scannedBarcode == null || scannedBarcode.isEmpty) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    _barcodeController.text = scannedBarcode;
+
+    try {
+      final lookup = await _barcodeLookupService.fetchByBarcode(scannedBarcode);
+      if (lookup == null) {
+        await TelemetryService.logEvent(
+          category: 'products',
+          message: 'barcode_scan_not_found',
+          severity: 'warning',
+          data: {'barcode': scannedBarcode},
+        );
+        if (mounted) {
+          AppSnackbar.showWarning(
+            context: context,
+            message: 'Codigo lido, mas produto nao foi encontrado. Complete manualmente.',
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        _nameController.text = lookup.productName;
+        if ((lookup.brand ?? '').trim().isNotEmpty) {
+          _brandController.text = lookup.brand!.trim();
+        }
+        if ((lookup.category ?? '').trim().isNotEmpty) {
+          _typeController.text = lookup.category!.trim();
+        }
+        if (lookup.quantity != null) {
+          _quantityController.text = lookup.quantity!.toStringAsFixed(0);
+        }
+        if (lookup.unit != null && lookup.unit!.isNotEmpty) {
+          _selectedUnit = lookup.unit!;
+        }
+      });
+
+      await TelemetryService.logEvent(
+        category: 'products',
+        message: 'barcode_scan_success',
+        severity: 'info',
+        data: {'barcode': scannedBarcode},
+      );
+
+      if (mounted) {
+        AppSnackbar.showSuccess(
+          context: context,
+          message: 'Dados preenchidos a partir do codigo de barras.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.showError(
+          context: context,
+          message: 'Erro ao consultar codigo de barras: $e',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -188,6 +269,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             : null,
         brand: _brandController.text.trim().isNotEmpty
             ? _brandController.text.trim()
+            : null,
+        barcode: _barcodeController.text.trim().isNotEmpty
+            ? _barcodeController.text.trim()
             : null,
         quantity: double.tryParse(_quantityController.text) ?? 1.0,
         unit: _selectedUnit,
@@ -425,6 +509,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               updatedAt: DateTime.now(),
               isConsumed: false,
               brand: null,
+              barcode: null,
               store: null,
               price: null,
               purchaseDate: null,
@@ -583,6 +668,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             prefixIcon: const Icon(
                               Icons.branding_watermark_outlined,
                             ),
+                          ),
+                          const SizedBox(height: StyleTokens.spacingL),
+                          AppTextField(
+                            controller: _barcodeController,
+                            label: 'Codigo de barras (opcional)',
+                            prefixIcon: const Icon(Icons.qr_code_2_outlined),
                           ),
                           const SizedBox(height: StyleTokens.spacingL),
                           AppTextField(
@@ -816,6 +907,35 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       isFullWidth: true,
                     ),
                     const SizedBox(height: StyleTokens.spacingL),
+                    OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _scanBarcodeAndPrefill,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: StyleTokens.spacingM,
+                        ),
+                        side: BorderSide(color: colorScheme.primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            StyleTokens.radiusM,
+                          ),
+                        ),
+                      ),
+                      icon: Icon(
+                        Icons.qr_code_scanner,
+                        color: _isLoading
+                            ? colorScheme.onSurfaceVariant
+                            : colorScheme.primary,
+                      ),
+                      label: Text(
+                        'Escanear codigo de barras',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: _isLoading
+                              ? colorScheme.onSurfaceVariant
+                              : colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                     OutlinedButton.icon(
                       onPressed: _isLoading ? null : _recognizeFood,
                       style: OutlinedButton.styleFrom(

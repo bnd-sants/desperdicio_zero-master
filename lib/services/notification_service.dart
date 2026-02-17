@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desperdicio_zero/core/providers/notification_preferences_provider.dart';
 import 'package:desperdicio_zero/models/product_model.dart';
+import 'package:desperdicio_zero/models/notification_suggestion.dart';
 import 'package:desperdicio_zero/services/deep_link_service.dart';
 import 'package:desperdicio_zero/services/product_service.dart';
 
@@ -86,6 +87,7 @@ class NotificationService with ChangeNotifier {
 
   late final FlutterLocalNotificationsPlugin _notificationsPlugin;
   bool _isInitialized = false;
+  final Set<String> _smartSuggestionKeys = <String>{};
 
   FlutterLocalNotificationsPlugin get _notifications {
     if (!_isInitialized) {
@@ -622,6 +624,17 @@ class NotificationService with ChangeNotifier {
       id: notificationId,
       notificationData: notificationData,
       scheduledDate: scheduledDate,
+    );
+  }
+
+  Future<void> scheduleSmartSuggestion(NotificationSuggestion suggestion) async {
+    if (_smartSuggestionKeys.contains(suggestion.key)) return;
+    _smartSuggestionKeys.add(suggestion.key);
+    await scheduleConsumptionTip(
+      title: suggestion.title,
+      body: suggestion.body,
+      scheduledDate: suggestion.scheduledAt,
+      tipId: suggestion.key,
     );
   }
 

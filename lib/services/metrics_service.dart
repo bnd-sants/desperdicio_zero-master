@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:desperdicio_zero/models/metrics_timeseries.dart';
 
 class ProductMetrics {
   final int totalItems;
@@ -131,5 +132,77 @@ class MetricsService {
       productMetrics: results[0] as ProductMetrics?,
       gamificationSummary: results[1] as GamificationSummary?,
     );
+  }
+
+  Future<List<MonthlyWastePoint>> fetchMonthlyWasteSeries(
+    String userId, {
+    int months = 12,
+  }) async {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month - (months - 1), 1);
+
+    final response = await _supabase
+        .from('products')
+        .select('is_consumed, expiration_date, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', start.toIso8601String())
+        .order('created_at', ascending: true);
+
+    final monthly = <String, Map<String, int>>{};
+    for (int i = 0; i < months; i++) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final key = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+      monthly[key] = {'consumed': 0, 'wasted': 0};
+    }
+
+    for (final item in (response as List)) {
+      final consumed = item['is_consumed'] as bool? ?? false;
+      final expirationRaw = item['expiration_date']?.toString();
+      final createdRaw = item['created_at']?.toString();
+      final createdAt = createdRaw != null ? DateTime.tryParse(createdRaw) : null;
+      final expirationDate = expirationRaw != null ? DateTime.tryParse(expirationRaw) : null;
+      final monthRef = createdAt ?? expirationDate;
+      if (monthRef == null) continue;
+
+      final key =
+          '${monthRef.year}-${monthRef.month.toString().padLeft(2, '0')}';
+      if (!monthly.containsKey(key)) continue;
+
+      if (consumed) {
+        monthly[key]!['consumed'] = (monthly[key]!['consumed'] ?? 0) + 1;
+      } else if (expirationDate != null && expirationDate.isBefore(DateTime.now())) {
+        monthly[key]!['wasted'] = (monthly[key]!['wasted'] ?? 0) + 1;
+      }
+    }
+
+    final points = monthly.entries.map((entry) {
+      final parts = entry.key.split('-');
+      return MonthlyWastePoint(
+        month: DateTime(int.parse(parts[0]), int.parse(parts[1]), 1),
+        consumed: entry.value['consumed'] ?? 0,
+        wasted: entry.value['wasted'] ?? 0,
+      );
+    }).toList();
+
+    points.sort((a, b) => a.month.compareTo(b.month));
+    return points;
+  }
+
+  Future<List<ForecastPoint>> forecastWaste30Days(String userId) async {
+    final series = await fetchMonthlyWasteSeries(userId, months: 6);
+    if (series.isEmpty) return [];
+
+    final averageMonthlyWaste =
+        series.map((p) => p.wasted).fold<int>(0, (sum, e) => sum + e) /
+            series.length;
+    final averageDailyWaste = averageMonthlyWaste / 30.0;
+    final now = DateTime.now();
+
+    return List.generate(30, (index) {
+      return ForecastPoint(
+        date: now.add(Duration(days: index + 1)),
+        predictedWaste: averageDailyWaste,
+      );
+    });
   }
 }

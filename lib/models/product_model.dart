@@ -10,6 +10,7 @@ class Product {
   final DateTime? expirationDate;
   final String? type; // e.g., 'food', 'beverage', 'cleaning', etc.
   final String? brand;
+  final String? barcode;
   final String? store;
   final double? price;
   final bool isConsumed;
@@ -32,6 +33,7 @@ class Product {
     this.expirationDate,
     this.type,
     this.brand,
+    this.barcode,
     this.store,
     this.price,
     this.isConsumed = false,
@@ -90,6 +92,7 @@ class Product {
 
     if (type != null) map['type'] = type;
     if (brand != null) map['brand'] = brand;
+    if (barcode != null) map['barcode'] = barcode;
     if (store != null) map['store'] = store;
     if (price != null) map['price'] = price;
     if (purchaseDate != null) {
@@ -116,6 +119,7 @@ class Product {
           : null,
       type: json['type'] as String?,
       brand: json['brand'] as String?,
+      barcode: json['barcode'] as String?,
       store: json['store'] as String?,
       price: json['price']?.toDouble(),
       isConsumed: json['is_consumed'] as bool? ?? false,
@@ -141,6 +145,7 @@ class Product {
     DateTime? expirationDate,
     String? type,
     String? brand,
+    String? barcode,
     String? store,
     double? price,
     bool? isConsumed,
@@ -161,6 +166,7 @@ class Product {
       expirationDate: expirationDate ?? this.expirationDate,
       type: type ?? this.type,
       brand: brand ?? this.brand,
+      barcode: barcode ?? this.barcode,
       store: store ?? this.store,
       price: price ?? this.price,
       isConsumed: isConsumed ?? this.isConsumed,
@@ -190,6 +196,7 @@ class Product {
       'expiration_date': expirationDate?.toIso8601String(),
       'type': type,
       'brand': brand,
+      'barcode': barcode,
       'store': store,
       'price': price,
       'is_consumed': isConsumed,
