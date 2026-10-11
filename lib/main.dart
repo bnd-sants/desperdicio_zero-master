@@ -99,6 +99,7 @@ Future<void> main() async {
   logger.logDebug('URL de redirecionamento: $redirectUrl');
 
   // Inicializa o serviço de notificações
+  if (!kIsWeb) {
   try {
     // Configura o manipulador de notificações em segundo plano
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -143,6 +144,7 @@ Future<void> main() async {
     // Continue mesmo se a inicialização das notificações falhar
     logger.logDebug('O aplicativo continuará sem notificações');
   }
+  }
 
   // Configura o listener de mudanças de autenticação
   final authStateSubscription = supabase.auth.onAuthStateChange.listen((data) {
@@ -155,14 +157,18 @@ Future<void> main() async {
     if (event == AuthChangeEvent.signedIn && session != null) {
       final email = session.user.email ?? "E-mail não disponível";
       logger.logInfo('Usuário autenticado: $email');
-      unawaited(
-        PushNotificationService.instance.syncTokenForCurrentUser(supabase),
-      );
+      if (!kIsWeb) {
+        unawaited(
+          PushNotificationService.instance.syncTokenForCurrentUser(supabase),
+        );
+      }
     } else if (event == AuthChangeEvent.signedOut) {
       logger.logInfo('Usuário deslogado');
-      unawaited(
-        PushNotificationService.instance.deleteTokenForCurrentUser(supabase),
-      );
+      if (!kIsWeb) {
+        unawaited(
+          PushNotificationService.instance.deleteTokenForCurrentUser(supabase),
+        );
+      }
     } else if (event == AuthChangeEvent.passwordRecovery) {
       logger.logInfo('Recuperação de senha solicitada');
     } else if (event == AuthChangeEvent.userUpdated) {
