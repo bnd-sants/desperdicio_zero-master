@@ -1,4 +1,8 @@
 buildscript {
+    configurations.classpath {
+        resolutionStrategy.activateDependencyLocking()
+    }
+
     extra.apply {
         set("kotlin_version", "2.1.0")
     }
@@ -13,6 +17,10 @@ buildscript {
         classpath(kotlin("gradle-plugin", version = "2.1.0"))
         classpath("com.google.gms:google-services:4.4.2")
     }
+}
+
+dependencyLocking {
+    lockAllConfigurations()
 }
 
 allprojects {

@@ -6,6 +6,10 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 android {
     namespace = "com.example.desperdicio_zero"
     compileSdk = 36
