@@ -58,8 +58,8 @@ Aplicativo para combate ao desperdício de alimentos, permitindo o gerenciamento
 
 1. Clone o repositório:
    ```bash
-   git clone https://github.com/seu-usuario/desperdicio-zero.git
-   cd desperdicio_zero
+   git clone https://github.com/bnd-sants/desperdicio_zero-master.git
+   cd desperdicio_zero-master
    ```
 
 2. Instale as dependências:
@@ -72,11 +72,11 @@ Aplicativo para combate ao desperdício de alimentos, permitindo o gerenciamento
    cp .env.example .env
    ```
    
-   Edite o arquivo `.env` com suas credenciais:
+   Edite o arquivo `.env` com suas credenciais. Não publique esse arquivo nem chaves privadas no repositório:
    ```
-   SUPABASE_URL=https://buuzrnplodxzzmcgstxw.supabase.co
-   SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1dXpybnBsb2R4enptY2dzdHh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzODk5ODEsImV4cCI6MjA3MTk2NTk4MX0.6ze2FEZ74cDKAbNFp7ra_lrkO4uIwZxwNBCPp42OVEE
-   SPOONACULAR_API_KEY=b268027a246e40be80cedc49ecae990f
+   SUPABASE_URL=https://seu-projeto.supabase.co
+   SUPABASE_ANON_KEY=sua_chave_publica
+   SPOONACULAR_API_KEY=sua_chave_privada
    ```
 
 4. Execute o aplicativo:
@@ -158,6 +158,6 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ## 📧 Contato
 
-Seu Nome - [@seu_twitter](https://twitter.com/seu_twitter)
+[bnd-sants no GitHub](https://github.com/bnd-sants)
 
-Link do Projeto: [https://github.com/seu-usuario/desperdicio-zero](https://github.com/seu-usuario/desperdicio-zero)
+Link do Projeto: [Desperdício Zero](https://github.com/bnd-sants/desperdicio_zero-master)
